@@ -109,7 +109,7 @@ def load_imagenet(batch_size, workers):
 
 
 # Define basic training loop for testing
-def train_vgg():
+def train_vgg(epochs):
     # Get cpu or gpu device for training.
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print("Using {} device".format(device))
@@ -120,8 +120,12 @@ def train_vgg():
     optimizer = optim.Adam(vgg.parameters(), lr=config.learning_rate, betas=(0.9, 0.999))
     critereon = nn.CrossEntropyLoss()
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer)
-    accuracies = train_model(vgg, optimizer, data_loader, test_loader, critereon, device, epochs=config.epochs,
+    accuracies = train_model(vgg, optimizer, data_loader, test_loader, critereon, device, epochs=epochs,
                              model_name='vgg', scheduler=scheduler)
-
     # Save the Trained Model
-    torch.save(vgg.state_dict(), 'weights,vgg.pkl')
+    torch.save(vgg.state_dict(), 'weights/vgg.pkl')
+    return accuracies
+
+# Currently using imagenette: https://github.com/fastai/imagenette
+if __name__ == "__main__":
+    train_vgg(config.epochs)

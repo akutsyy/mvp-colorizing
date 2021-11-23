@@ -1,0 +1,3 @@
+[submodule "ChromaGAN"]
+	path = ChromaGAN
+	url = https://github.com/pvitoria/ChromaGAN.git

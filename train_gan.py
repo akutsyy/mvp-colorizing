@@ -3,6 +3,9 @@ import os
 import numpy as np
 import torch
 import sys
+
+from matplotlib import pyplot as plt
+
 import config
 import dataset
 import network
@@ -21,7 +24,7 @@ def get_disc_optimizer(discriminator):
 
 
 def get_gen_criterion():
-    kld = torch.nn.KLDivLoss()
+    kld = torch.nn.KLDivLoss(reduction='batchmean')
 
     def loss_function(outputs_list, truth_list):
         ab, classes, discrim = outputs_list
@@ -62,7 +65,6 @@ def train_gan():
     discriminator = network.Discriminator()
     generator = network.Colorization_Model()
 
-
     # Real, Fake and Dummy for Discriminator
     positive_y = np.ones((config.batch_size, 1), dtype=np.float32)
     negative_y = -positive_y
@@ -72,6 +74,7 @@ def train_gan():
     disc_optimizer = get_disc_optimizer(discriminator)
     gen_criterion = get_gen_criterion()
     disc_criterion = get_disc_criterion()
+
 
     num_batches = int(len(train_loader) / config.batch_size)
 
@@ -108,17 +111,19 @@ def train_gan():
             gen_loss = gen_criterion((predicted_ab, predicted_classes, discrim_from_predicted),
                                      (ab, vgg_out, positive_y))
             gen_optimizer.zero_grad()
-            gen_loss.backward()
+            gen_loss.backward(retain_graph=True)
             gen_optimizer.step()
             running_gen_loss += gen_loss.item()
 
             # Train discriminator
-            gen_loss = disc_criterion((discrim_from_real, discrim_from_predicted, discrim_from_avg),
+            disc_loss = disc_criterion((discrim_from_real, discrim_from_predicted, discrim_from_avg),
                                       (positive_y, negative_y, dummy_y), random_average_ab)
             disc_optimizer.zero_grad()
-            gen_loss.backward()
+            disc_loss.backward()
             disc_optimizer.step()
             running_disc_loss += gen_loss.item()
+
+
 
         torch.save(vgg_bottom.state_dict(), save_models_path+"/vgg_bottom_" + str(epoch) + ".pth")
         torch.save(generator.state_dict(), save_models_path+"/generator_" + str(epoch) + ".pth")

@@ -16,9 +16,9 @@ class Discriminator(nn.Module):
             nn.LeakyReLU(),
             nn_utils.PaddedConv2d(in_channels=128, out_channels=256, kernel_size=(4, 4), stride=(2, 2)),
             nn.LeakyReLU(),
-            nn_utils.PaddedConv2d(in_channels=256, out_channels=512, kernel_size=(4, 4), stride=(2, 2)),
+            nn_utils.PaddedConv2d(in_channels=256, out_channels=512, kernel_size=(4, 4), stride=(1, 1)),
             nn.LeakyReLU(),
-            nn_utils.PaddedConv2d(in_channels=512, out_channels=1, kernel_size=(4, 4), stride=(2, 2)),  # 1,28,28
+            nn_utils.PaddedConv2d(in_channels=512, out_channels=1, kernel_size=(4, 4), stride=(1, 1)),  # 1,28,28
         )
 
     def forward(self, x):

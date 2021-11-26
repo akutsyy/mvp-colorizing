@@ -109,37 +109,39 @@ def get_datasets():
                                               num_workers=config.num_workers)
     return train_loader, test_loader, len(train_set), len(test_set)
 
+# Used for viewing normalized images
+class UnNormalize(object):
+    def __init__(self, mean, std):
+        self.mean = mean
+        self.std = std
+
+    def __call__(self, tensor):
+        """
+        Args:
+            tensor (Tensor): Tensor image of size (C, H, W) to be normalized.
+        Returns:
+            Tensor: Normalized image.
+        """
+        for t, m, s in zip(tensor, self.mean, self.std):
+            t.mul_(s).add_(m)
+            # The normalize code -> t.sub_(m).div_(s)
+        return tensor
+unnormalize_transform = UnNormalize(mean=[0.485, 0.456, 0.406],
+                                    std=[0.229, 0.224, 0.225])
 
 def display_dataset_sample():
-    # Used for viewing normalized images
-    class UnNormalize(object):
-        def __init__(self, mean, std):
-            self.mean = mean
-            self.std = std
 
-        def __call__(self, tensor):
-            """
-            Args:
-                tensor (Tensor): Tensor image of size (C, H, W) to be normalized.
-            Returns:
-                Tensor: Normalized image.
-            """
-            for t, m, s in zip(tensor, self.mean, self.std):
-                t.mul_(s).add_(m)
-                # The normalize code -> t.sub_(m).div_(s)
-            return tensor
 
     training_data = UCF101ImageDataset("dataset/UCF101Images_train")
     rows = 6
     figure = plt.figure(figsize=(3, 6))
     figure.set_tight_layout(True)
-    unnormalize = UnNormalize(mean=[0.485, 0.456, 0.406],
-                              std=[0.229, 0.224, 0.225])
+
     for i in range(1, 12, 2):
         sample_idx = torch.randint(len(training_data), size=(1,)).item()
         color, bw = training_data[sample_idx]
         full_image = torch.concat([bw, color], dim=0)
-        full_image = unnormalize(full_image)
+        full_image = unnormalize_transform(full_image)
         bw = full_image[0]
         full_color = torch.permute(
                 transforms.ToTensor()(skcolor.lab2rgb(torch.permute(full_image, (1, 2, 0)).numpy())),
@@ -152,6 +154,20 @@ def display_dataset_sample():
         plt.axis("off")
         plt.imshow(bw, cmap='gray')
     plt.show()
+
+def to_image(bw,color):
+    full_image = torch.concat([bw, color], dim=0)
+    full_image = unnormalize_transform(full_image)
+    full_color = torch.permute(
+        transforms.ToTensor()(skcolor.lab2rgb(torch.permute(full_image, (1, 2, 0)).numpy())),
+        (1, 2, 0))
+
+    return full_color
+
+def to_bw(bw,color):
+    full_image = torch.concat([bw, color], dim=0)
+    full_image = unnormalize_transform(full_image)
+    return full_image[0]
 
 
 if __name__ == '__main__':

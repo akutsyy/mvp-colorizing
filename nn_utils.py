@@ -1,10 +1,13 @@
 # Helper functions (will move to another file later)
 import math
 
+import numpy
 import numpy as np
 import torch
 import torch.nn as nn
 
+def get_all_dims(tensor):
+    return tuple(range(0, len(tensor.shape)))
 
 def random_weighted_average(a, b):
     batch = a.shape[0]
@@ -19,29 +22,31 @@ def deprocess(imgs):
 
 
 def wasserstein_loss(y_pred, y_true):
-    return torch.mean(y_pred,dim=(0,1,2,3))
+    return torch.mean(y_pred)
 
 
 def mse(y_pred, y_true):
-    return torch.mean((y_pred - y_true) ** 2,dim=(0,1,2,3))
+    return torch.mean((y_pred - y_true) ** 2)
 
 
 def gradient_penalty_loss(y_pred, y_true, averaged_samples,
                           gradient_penalty_weight=10):
-    y_pred.zero_grad()
-    y_pred.backward()
-    gradients = averaged_samples.grad
-    print(gradients.shape)
+    # Intent:
+    # Get gradient from y_pred down to averaged_samples
+    # norm = sqrt(sum_all_but_batch(grads**2))
+    # Penalty = mean_over_batch(weight*(1-norm)**2)
+    ones = torch.tensor(numpy.ones_like(y_pred.detach().numpy()))
+    gradients = torch.autograd.grad(y_pred, averaged_samples, grad_outputs=ones,retain_graph=True)[0]
+
     gradients_sqr = gradients ** 2
     gradients_sqr_sum = torch.sum(gradients_sqr,
-                                  dim=np.arange(1, len(gradients_sqr.shape)))
-    gradient_l2_norm = gradients_sqr_sum ** 2
+                                  dim=get_all_dims(y_pred)[1:])
+    gradient_l2_norm = torch.sqrt(gradients_sqr_sum)
     gradient_penalty = gradient_penalty_weight * (1 - gradient_l2_norm) ** 2
-    print(gradient_penalty.shape)
     return torch.mean(gradient_penalty)
 
 
-# Pytorch doesn't support same padding with stride =/= 1, this is my fix
+# Pytorch doesn't support 'same' padding with stride =/= 1, this is my fix
 class PaddedConv2d(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, stride):
         super(PaddedConv2d, self).__init__()

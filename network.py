@@ -7,21 +7,11 @@ from torch import nn
 import nn_utils
 
 
-class Configuration():
-    def __init__(self):
-        self.batch_size = 10
-        self.IMAGE_SIZE = 224
-        self.nThreads = 4
-
-
-config = Configuration()
-
-
 class Discriminator(nn.Module):
     def __init__(self):
         super(Discriminator, self).__init__()
         self.net = nn.Sequential(
-            nn_utils.nn_utils.PaddedConv2d(in_channels=(1 + 2), out_channels=64, kernel_size=(4, 4), stride=(2, 2)),
+            nn_utils.PaddedConv2d(in_channels=(1 + 2), out_channels=64, kernel_size=(4, 4), stride=(2, 2)),
             nn.LeakyReLU(),
             nn_utils.PaddedConv2d(in_channels=64, out_channels=128, kernel_size=(4, 4), stride=(2, 2)),
             nn.LeakyReLU(),

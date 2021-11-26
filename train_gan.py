@@ -1,68 +1,124 @@
-import collections
-import math
-
-import torch
-from torch import nn
-import torchvision
 import os
-import cv2
-from pathlib import Path
-import random
 
+import numpy as np
+import torch
+import sys
+import config
 # Hyperparams (move to text file later)
+import dataset
+import network
+import nn_utils
 import partial_vgg
 
 
-class Configuration():
-    def __init__(self):
-        self.batch_size = 64
-        self.epochs = 5
-        self.IMAGE_SIZE = 224
-        self.nThreads = 4
-        self.learning_rate = 0.01
+def get_gen_optimizer(vgg_bottom, gen):
+    params = list(vgg_bottom.parameters()) + list(gen.parameters())
+    return torch.optim.Adam(params, lr=0.00002, betas=(0.5, 0.999))
 
 
-config = Configuration()
+def get_disc_optimizer(discriminator):
+    return torch.optim.Adam(discriminator.parameters(), lr=0.00002, betas=(0.5, 0.999))
 
 
-def convert_videos_to_images(eval_portion):
-    Path("dataset/UCF101Images_train").mkdir(parents=True, exist_ok=True)
-    Path("dataset/UCF101Images_eval").mkdir(parents=True, exist_ok=True)
-    total = len(os.listdir("dataset/UCF101"))
-    for i, filename in enumerate(os.listdir("dataset/UCF101")):
-        trimmed_filename = filename[:-4]
-        print(str(100*i/total)+"%,  "+filename)
-        # Skip if already processed this video
-        if not filename.endswith(".avi") or \
-                os.path.isfile("dataset/UCF101Images_train/" + str(trimmed_filename) + "_0.png") \
-                or os.path.isfile("dataset/UCF101Images_eval/" + str(trimmed_filename) + "_0.png"):
-            continue
+def get_gen_criterion():
+    kld = torch.nn.KLDivLoss()
 
-        frames, audio, metadata = torchvision.io.read_video("dataset/UCF101/" + filename)
-        # Place entire videos either as eval or train, to avoid over-fitting
-        do_eval = random.random() < eval_portion
-        # Reduce training set to 2 fps to save space/time
-        if not do_eval:
-            frames = frames[::12]
+    def loss_function(outputs_list, truth_list):
+        ab, classes, discrim = outputs_list
+        true_ab, true_labels, true_discrim = truth_list
+        return 1 * nn_utils.mse(ab, true_ab) + 0.003 * kld(classes, true_labels) - 0.1 * nn_utils.wasserstein_loss(
+            discrim, true_discrim)
 
-        for i, img in enumerate(frames):
-            tensor = cv2.cvtColor(img.cpu().numpy(), cv2.COLOR_BGR2RGB)
-            if do_eval:
-                cv2.imwrite("dataset/UCF101Images_eval/" + str(trimmed_filename) + "_" + str(i) + ".png", tensor)
-            else:
-                cv2.imwrite("dataset/UCF101Images_train/" + str(trimmed_filename) + "_" + str(i) + ".png", tensor)
+    return loss_function
 
 
-# Use the UCF101 dataset, here https://www.crcv.ucf.edu/data/UCF101.php
-# or here: http://www.thumos.info/download.html
-# This is a collection of human actions, chosen because many black and white videos
-# focus on people (old movies, etc)
-def load_trainset():
-    convert_videos_to_images(0.05)
+def get_disc_criterion():
+    def loss_function(outputs_list, truth_list, random_average_ab,
+                      gradient_penalty_weight=10):
+        real, pred, avg = outputs_list  # Discriminator predictions
+        pos, neg, dummy = truth_list  # Discriminator goals
+        return -1 * nn_utils.wasserstein_loss(real, pos) + \
+               1 * nn_utils.wasserstein_loss(pred, neg) + \
+               1 * nn_utils.gradient_penalty_loss(avg, dummy, random_average_ab, gradient_penalty_weight)
+
+    return loss_function
 
 
 def train_gan():
-    vgg16 = partial_vgg.get_partial_vgg()
+    # Get cpu or gpu device for training.
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+
+    print("Loading data...")
+    train_loader, test_loader, train_len, test_len = dataset.get_datasets()
+    print("Loaded")
+    save_models_path = os.path.join(config.model_dir, config.test_name)
+    if not os.path.exists(save_models_path):
+        os.makedirs(save_models_path)
+
+    # Load models
+    vgg_bottom = partial_vgg.get_partial_vgg()
+    vgg_top = partial_vgg.get_vgg_top()  # Yes it's strange that the bottom gets trained but the top doesn't
+    discriminator = network.Discriminator()
+    generator = network.Colorization_Model()
+
+    # Real, Fake and Dummy for Discriminator
+    positive_y = np.ones((config.batch_size, 1), dtype=np.float32)
+    negative_y = -positive_y
+    dummy_y = np.zeros((config.batch_size, 1), dtype=np.float32)
+
+    gen_optimizer = get_gen_optimizer(vgg_bottom, generator)
+    disc_optimizer = get_disc_optimizer(discriminator)
+    gen_criterion = get_gen_criterion()
+    disc_criterion = get_disc_criterion()
+
+    num_batches = int(len(train_loader) / config.batch_size)
+
+    for epoch in range(config.num_epochs):
+        print("Training epoch "+str(epoch))
+        running_gen_loss = 0.0
+        running_disc_loss = 0.0
+        for i, data in enumerate(train_loader, 0):
+            # Print progress
+            sys.stdout.write('\r')
+            sys.stdout.write("[%-20s] %d%%" % ('='*((50*i)//num_batches), 100* i//num_batches))
+            sys.stdout.flush()
+
+            # ab channels of l*a*b color space - is color
+            ab, grey = data
+            ab, grey = ab.to(device), grey.to(device)
+            # Images are in l*a*b* space, normalized
+
+            # Use pre-trained VGG as in original paper
+            grey_3 = grey.repeat(1, 3, 1, 1).to(device)
+            vgg_bottom_out = vgg_bottom(grey_3)
+            vgg_out = vgg_top(vgg_bottom_out)
+            predicted_ab, predicted_classes = generator(vgg_bottom_out)
+            random_average_ab = nn_utils.random_weighted_average(predicted_ab, ab)
+
+            discrim_from_real = discriminator(torch.concat([grey, ab], dim=0))
+            discrim_from_predicted = discriminator(torch.concat([grey, predicted_ab], dim=0))
+            discrim_from_avg = discriminator(torch.concat([grey, random_average_ab], dim=0))
+
+            # Train generator
+            gen_loss = gen_criterion((predicted_ab, predicted_classes, discrim_from_predicted),
+                                     (ab, vgg_out, positive_y))
+            gen_optimizer.zero_grad()
+            gen_loss.backward()
+            gen_optimizer.step()
+            running_gen_loss += gen_loss.item()
+
+            # Train discriminator
+            gen_loss = disc_criterion((discrim_from_real, discrim_from_predicted, discrim_from_avg),
+                                      (positive_y, negative_y, dummy_y), random_average_ab)
+            disc_optimizer.zero_grad()
+            gen_loss.backward()
+            disc_optimizer.step()
+            running_disc_loss += gen_loss.item()
+
+        torch.save(vgg_bottom.state_dict(), save_models_path+"/vgg_bottom_" + str(epoch) + ".pth")
+        torch.save(generator.state_dict(), save_models_path+"/generator_" + str(epoch) + ".pth")
+        torch.save(discriminator.state_dict(), save_models_path+"/discriminator_" + str(epoch) + ".pth")
 
 
-convert_videos_to_images(0.05)
+if __name__ == '__main__':
+    train_gan()

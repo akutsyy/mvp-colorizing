@@ -1,3 +1,4 @@
+import numpy as np
 import torch
 import os
 import random
@@ -10,7 +11,8 @@ import torchvision.transforms as transforms
 from skimage import color as skcolor
 from torch.utils.data import Dataset
 from matplotlib import pyplot as plt
-
+from PIL import Image
+import time
 # Hyperparams (move to text file later)
 import config
 
@@ -81,16 +83,17 @@ class UCF101ImageDataset(Dataset):
 
         img_name = os.path.join(self.root_dir,
                                 self.filenames[idx])
-        transforms.ToTensor(),
 
-        image = self.to_pil(torchvision.io.read_image(img_name))
+        image = cv2.imread(img_name)
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2LAB)
 
-        image = self.other_transforms(image)
+        image = self.other_transforms(self.to_tensor(image))
+        # Undo conversion weirdness
+        image = torch.concat([image[0].unsqueeze(0)*100,255*image[1:]-128],dim=0)
 
-        image = self.to_tensor(skcolor.rgb2lab(image))
         image = self.normalize(image)
 
-        sample = [image[1:], image[0].unsqueeze(0)]
+        sample = (image[1:], image[0].unsqueeze(0))
 
         return sample
 
@@ -141,11 +144,13 @@ def display_dataset_sample():
         full_image = torch.concat([bw, color], dim=0)
         full_image = unnormalize(full_image)
         bw = full_image[0]
+        full_color = torch.permute(
+                transforms.ToTensor()(skcolor.lab2rgb(torch.permute(full_image, (1, 2, 0)).numpy())),
+            (1, 2, 0))
 
         figure.add_subplot(rows, 2, i)
         plt.axis("off")
-        plt.imshow(
-            torch.permute(transforms.ToTensor()(skcolor.lab2rgb(torch.permute(full_image, (1, 2, 0)))), (1, 2, 0)))
+        plt.imshow(full_color)
         figure.add_subplot(rows, 2, i + 1)
         plt.axis("off")
         plt.imshow(bw, cmap='gray')
@@ -153,8 +158,10 @@ def display_dataset_sample():
 
 
 if __name__ == '__main__':
+    display_dataset_sample()
     print("Loading")
     train_loader, test_loader, train_len, test_len = get_datasets()
     print("Loaded")
-    for i,x in enumerate(train_loader):
-        print(i)
+    start = time.time()
+    for i, x in enumerate(train_loader):
+        print(str(i) + ",   " + str((time.time() - start) / (i + 1)) + " seconds per batch")

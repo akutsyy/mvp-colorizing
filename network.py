@@ -3,7 +3,6 @@ import math
 import torch
 from torch import nn
 
-# Hyperparams (move to text file later)
 import nn_utils
 
 
@@ -54,7 +53,7 @@ class Colorization_Model(nn.Module):
         # I've added ReLU since that seems like an error
         self.global_features2 = nn.Sequential(
             nn.Flatten(),
-            nn.Linear(512 * 4, 1024),
+            nn.Linear(512 * 7 * 7, 1024),
             self.activation,
             nn.Linear(1024, 512),
             self.activation,
@@ -65,17 +64,16 @@ class Colorization_Model(nn.Module):
 
         self.global_features_class = nn.Sequential(
             nn.Flatten(),
-            nn.Linear(512 * 4, 4096),
+            nn.Linear(512 * 7 * 7, 4096),
             self.activation,
             nn.Linear(4096, 4096),
             self.activation,
             nn.Linear(4096, 1000),
-            nn.Softmax(),
+            nn.Softmax(dim=1),
         )
 
         # Midlevel feature
         self.midlevel_features = nn.Sequential(
-            nn.Flatten(),
             nn_utils.PaddedConv2d(in_channels=512, out_channels=512, kernel_size=(3, 3), stride=(1, 1)),
             self.activation,
             nn.BatchNorm2d(512),
@@ -106,8 +104,7 @@ class Colorization_Model(nn.Module):
         )
 
     def forward(self, x):
-        # Output is shape BATCH,512,14,14 and comes from VGG16
-
+        # Output is shape BATCH,512,7,7 and comes from VGG16
         batch_size = x.shape[0]
 
         globalFeatures = self.global_features(x)

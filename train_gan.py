@@ -4,11 +4,11 @@ import numpy as np
 import torch
 import sys
 import config
-# Hyperparams (move to text file later)
 import dataset
 import network
 import nn_utils
 import partial_vgg
+
 
 
 def get_gen_optimizer(vgg_bottom, gen):
@@ -26,8 +26,9 @@ def get_gen_criterion():
     def loss_function(outputs_list, truth_list):
         ab, classes, discrim = outputs_list
         true_ab, true_labels, true_discrim = truth_list
-        return 1 * nn_utils.mse(ab, true_ab) + 0.003 * kld(classes, true_labels) - 0.1 * nn_utils.wasserstein_loss(
+        loss = 1 * nn_utils.mse(ab, true_ab) + 0.003 * kld(classes, true_labels) - 0.1 * nn_utils.wasserstein_loss(
             discrim, true_discrim)
+        return loss
 
     return loss_function
 
@@ -56,10 +57,11 @@ def train_gan():
         os.makedirs(save_models_path)
 
     # Load models
-    vgg_bottom = partial_vgg.get_partial_vgg()
+    vgg_bottom, unflatten = partial_vgg.get_partial_vgg()
     vgg_top = partial_vgg.get_vgg_top()  # Yes it's strange that the bottom gets trained but the top doesn't
     discriminator = network.Discriminator()
     generator = network.Colorization_Model()
+
 
     # Real, Fake and Dummy for Discriminator
     positive_y = np.ones((config.batch_size, 1), dtype=np.float32)
@@ -79,9 +81,10 @@ def train_gan():
         running_disc_loss = 0.0
         for i, data in enumerate(train_loader, 0):
             # Print progress
-            sys.stdout.write('\r')
-            sys.stdout.write("[%-20s] %d%%" % ('='*((50*i)//num_batches), 100* i//num_batches))
-            sys.stdout.flush()
+            #sys.stdout.write('\r')
+            #sys.stdout.write("[%-20s] %d%%" % ('='*((50*i)//num_batches), 100* i//num_batches))
+            #sys.stdout.flush()
+            print("Batch "+str(i))
 
             # ab channels of l*a*b color space - is color
             ab, grey = data
@@ -90,14 +93,16 @@ def train_gan():
 
             # Use pre-trained VGG as in original paper
             grey_3 = grey.repeat(1, 3, 1, 1).to(device)
-            vgg_bottom_out = vgg_bottom(grey_3)
+            vgg_bottom_out_flat = vgg_bottom(grey_3)
+            # To undo the flatten operation in vgg_bottom
+            vgg_bottom_out = unflatten(vgg_bottom_out_flat)
             vgg_out = vgg_top(vgg_bottom_out)
             predicted_ab, predicted_classes = generator(vgg_bottom_out)
             random_average_ab = nn_utils.random_weighted_average(predicted_ab, ab)
 
-            discrim_from_real = discriminator(torch.concat([grey, ab], dim=0))
-            discrim_from_predicted = discriminator(torch.concat([grey, predicted_ab], dim=0))
-            discrim_from_avg = discriminator(torch.concat([grey, random_average_ab], dim=0))
+            discrim_from_real = discriminator(torch.concat([grey, ab], dim=1))
+            discrim_from_predicted = discriminator(torch.concat([grey, predicted_ab], dim=1))
+            discrim_from_avg = discriminator(torch.concat([grey, random_average_ab], dim=1))
 
             # Train generator
             gen_loss = gen_criterion((predicted_ab, predicted_classes, discrim_from_predicted),

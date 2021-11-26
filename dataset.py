@@ -1,19 +1,16 @@
-import numpy as np
-import torch
 import os
 import random
+import time
 from pathlib import Path
 
 import cv2
 import torch
 import torchvision
 import torchvision.transforms as transforms
+from matplotlib import pyplot as plt
 from skimage import color as skcolor
 from torch.utils.data import Dataset
-from matplotlib import pyplot as plt
-from PIL import Image
-import time
-# Hyperparams (move to text file later)
+
 import config
 
 

@@ -71,10 +71,6 @@ def train_gan():
     discriminator = network.Discriminator()
     generator = network.Colorization_Model()
 
-    #vgg_bottom = vgg_bottom.float()
-    #discriminator = discriminator.float()
-    #generator = generator.float()
-
     # Real, Fake and Dummy for Discriminator
     positive_y = np.ones((config.batch_size, 1), dtype=np.float32)
     negative_y = -positive_y
@@ -86,10 +82,10 @@ def train_gan():
     disc_criterion = get_disc_criterion()
 
     demo_data = next(iter(test_loader))
-    demo_bw = dataset.to_bw(demo_data[1][0], demo_data[0][0])
+    demo_bw = demo_data[1][0]
 
     num_batches = int(len(train_loader) / config.batch_size)
-    #torch.autograd.set_detect_anomaly(True)
+    # torch.autograd.set_detect_anomaly(True)
 
     for epoch in range(config.num_epochs):
         print("Training epoch " + str(epoch))
@@ -141,11 +137,10 @@ def train_gan():
             # Save a demo image after every 10 batches, for testing
             if i % 10 == 0:
                 demo_ab = generate_from_bw(device, vgg_bottom, unflatten, generator, demo_bw)
-                # Reshape dimensions to be as expeted
-                processed_bw = torch.unsqueeze(demo_bw, dim=0)
+                # Reshape dimensions to be as expected
                 processed_ab = torch.squeeze(demo_ab, dim=0)
-                plt.imsave("test_output/e" + str(epoch) + "b" + str(i) + ".png",
-                           dataset.to_image(processed_bw, processed_ab))
+                processed_image = dataset.to_image(demo_bw, processed_ab)
+                plt.imsave("test_output/e" + str(epoch) + "b" + str(i) + ".png", processed_image.numpy())
 
         torch.save(vgg_bottom.state_dict(), save_models_path + "/vgg_bottom_" + str(epoch) + ".pth")
         torch.save(generator.state_dict(), save_models_path + "/generator_" + str(epoch) + ".pth")

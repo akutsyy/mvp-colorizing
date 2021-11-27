@@ -123,9 +123,10 @@ class UnNormalize(object):
         Returns:
             Tensor: Normalized image.
         """
-        tnew = torch.as_tensor(np.ones(shape=tensor.shape[1:]))
-        for t, m, s in zip(tensor, self.mean, self.std):
-            tnew = tnew*s + m
+        tnew = torch.as_tensor(np.ones(tensor.shape))
+        for i, x in enumerate(zip(tensor, self.mean, self.std)):
+            t, m, s = x
+            tnew[i] = tensor[i]*s + m
             # The normalize code -> t.sub_(m).div_(s)
         return tnew
 
@@ -162,7 +163,7 @@ def to_image(bw,color):
     full_image = torch.concat([bw, color], dim=0)
     full_image = unnormalize_transform(full_image)
     full_color = torch.permute(
-        transforms.ToTensor()(skcolor.lab2rgb(torch.permute(full_image, (1, 2, 0)).numpy())),
+        transforms.ToTensor()(skcolor.lab2rgb(torch.permute(full_image, (1, 2, 0)).detach().numpy())),
         (1, 2, 0))
 
     return full_color

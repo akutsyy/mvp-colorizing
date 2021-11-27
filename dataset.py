@@ -4,6 +4,7 @@ import time
 from pathlib import Path
 
 import cv2
+import numpy as np
 import torch
 import torchvision
 import torchvision.transforms as transforms
@@ -122,10 +123,12 @@ class UnNormalize(object):
         Returns:
             Tensor: Normalized image.
         """
+        tnew = torch.as_tensor(np.ones(shape=tensor.shape[1:]))
         for t, m, s in zip(tensor, self.mean, self.std):
-            t.mul_(s).add_(m)
+            tnew = tnew*s + m
             # The normalize code -> t.sub_(m).div_(s)
-        return tensor
+        return tnew
+
 unnormalize_transform = UnNormalize(mean=[0.485, 0.456, 0.406],
                                     std=[0.229, 0.224, 0.225])
 

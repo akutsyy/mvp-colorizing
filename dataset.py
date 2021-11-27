@@ -116,8 +116,7 @@ def display_dataset_sample():
     for i in range(1, 12, 2):
         sample_idx = torch.randint(len(training_data), size=(1,)).item()
         color, bw = training_data[sample_idx]
-        full_image = torch.concat([bw, color], dim=0)
-        full_image = torch.concat([full_image[0].unsqueeze(0)*100, full_image[1:]*255-127], dim=0)
+        full_image = torch.concat([bw*100, color*255-127], dim=0)
         bw = full_image[0]
         full_color = torch.permute(
                 transforms.ToTensor()(skcolor.lab2rgb(torch.permute(full_image, (1, 2, 0)).numpy())),
@@ -136,7 +135,6 @@ def to_image(bw,color):
     full_color = torch.permute(
         transforms.ToTensor()(skcolor.lab2rgb(torch.permute(full_image, (1, 2, 0)).detach().numpy())),
         (1, 2, 0))
-
     return full_color
 
 
@@ -150,4 +148,3 @@ if __name__ == '__main__':
     for i, x in enumerate(train_loader):
         print(str(i) + ",   " + str((time.time() - start) / (i + 1)) + " seconds per batch")
         color,bw = x
-        print(color)

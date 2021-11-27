@@ -27,9 +27,15 @@ def get_gen_criterion():
     kld = torch.nn.KLDivLoss(reduction='batchmean')
 
     def loss_function(ab, classes, discrim, true_ab, true_labels, true_discrim):
-        loss = 1 * nn_utils.mse(ab, true_ab) + 0.003 * kld(torch.log(classes), functional.softmax(true_labels,
-                                                                                                  dim=1)) - 0.1 * nn_utils.wasserstein_loss(
-            discrim, true_discrim)
+        mse_loss = nn_utils.mse(ab, true_ab)
+        kld_loss = kld(torch.log(classes), functional.softmax(true_labels, dim=1))
+        wasser_loss = nn_utils.wasserstein_loss(discrim, true_discrim)
+        print("mse: "+str(mse_loss))
+        print("kld: "+str(kld_loss))
+        print("wasser: "+str(wasser_loss))
+        loss = 1 *  mse_loss\
+               + 0.003 * kld_loss \
+               - 0.1 * wasser_loss
         return loss
 
     return loss_function
@@ -38,9 +44,16 @@ def get_gen_criterion():
 def get_disc_criterion():
     def loss_function(real, pred, avg, pos, neg, dummy, random_average_ab,
                       gradient_penalty_weight=10):
-        return -1 * nn_utils.wasserstein_loss(real, pos) + \
-               1 * nn_utils.wasserstein_loss(pred, neg) + \
-               1 * nn_utils.gradient_penalty_loss(avg, dummy, random_average_ab, gradient_penalty_weight)
+        real_loss = nn_utils.wasserstein_loss(real, pos)
+        pred_loss = nn_utils.wasserstein_loss(pred, neg)
+        gp_loss = nn_utils.gradient_penalty_loss(avg, dummy, random_average_ab, gradient_penalty_weight)
+
+        print("real: "+str(real_loss))
+        print("pred: "+str(pred_loss))
+        print("grad: "+str(gp_loss))
+        return -1 * real_loss + \
+               1 * pred_loss + \
+               1 * gp_loss
 
     return loss_function
 

@@ -21,7 +21,7 @@ def deprocess(imgs):
     return imgs
 
 
-def wasserstein_loss(y_pred, y_true):
+def wasserstein_loss(y_pred):
     return torch.mean(y_pred)
 
 
@@ -29,7 +29,7 @@ def mse(y_pred, y_true):
     return torch.mean((y_pred - y_true) ** 2)
 
 
-def gradient_penalty_loss(y_pred, y_true, averaged_samples,
+def gradient_penalty_loss(y_pred, averaged_samples,
                           gradient_penalty_weight=10):
     # Intent:
     # Get gradient from y_pred down to averaged_samples
@@ -44,6 +44,28 @@ def gradient_penalty_loss(y_pred, y_true, averaged_samples,
     gradient_l2_norm = torch.sqrt(gradients_sqr_sum)
     gradient_penalty = gradient_penalty_weight * (1 - gradient_l2_norm) ** 2
     return torch.mean(gradient_penalty)
+
+def compute_gradient_penalty(D, real_samples, fake_samples):
+    """Calculates the gradient penalty loss for WGAN GP"""
+    # Random weight term for interpolation between real and fake samples
+    alpha = torch.Tensor(np.random.random((real_samples.size(0), 1, 1, 1)))
+    # Get random interpolation between real and fake samples
+    interpolates = (alpha * real_samples + ((1 - alpha) * fake_samples)).requires_grad_(True)
+    d_interpolates = D(interpolates)
+    fake = torch.autograd.Variable(torch.Tensor(d_interpolates.shape).fill_(1.0), requires_grad=False)
+
+    # Get gradient w.r.t. interpolates
+    gradients = torch.autograd.grad(
+        outputs=d_interpolates,
+        inputs=interpolates,
+        grad_outputs=fake,
+        create_graph=True,
+        retain_graph=True,
+        only_inputs=True,
+    )[0]
+    gradients = gradients.view(gradients.size(0), -1)
+    gradient_penalty = ((gradients.norm(2, dim=1) - 1) ** 2).mean()
+    return gradient_penalty
 
 
 # Pytorch doesn't support 'same' padding with stride =/= 1, this is my fix

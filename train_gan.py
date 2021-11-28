@@ -26,14 +26,14 @@ def get_disc_optimizer(discriminator):
 def get_gen_criterion():
     kld = torch.nn.KLDivLoss(reduction='batchmean')
 
-    def loss_function(ab, classes, discrim, true_ab, true_labels, true_discrim):
+    def loss_function(ab, classes, discrim, true_ab, true_labels):
         mse_loss = nn_utils.mse(ab, true_ab)
         kld_loss = kld(torch.log(classes), functional.softmax(true_labels, dim=1))
-        wasser_loss = nn_utils.wasserstein_loss(discrim, true_discrim)
-        print("mse: "+str(mse_loss))
-        print("kld: "+str(kld_loss))
-        print("wasser: "+str(wasser_loss))
-        loss = 1 *  mse_loss\
+        wasser_loss = nn_utils.wasserstein_loss(discrim)
+        print("mse: " + str(mse_loss))
+        print("kld: " + str(kld_loss))
+        print("wasser: " + str(wasser_loss))
+        loss = 1 * mse_loss \
                + 0.003 * kld_loss \
                - 0.1 * wasser_loss
         return loss
@@ -42,15 +42,16 @@ def get_gen_criterion():
 
 
 def get_disc_criterion():
-    def loss_function(real, pred, avg, pos, neg, dummy, random_average_ab,
+    def loss_function(real, pred, real_sample, pred_sample, discriminator,
                       gradient_penalty_weight=10):
-        real_loss = nn_utils.wasserstein_loss(real, pos)
-        pred_loss = nn_utils.wasserstein_loss(pred, neg)
-        gp_loss = nn_utils.gradient_penalty_loss(avg, dummy, random_average_ab, gradient_penalty_weight)
+        real_loss = nn_utils.wasserstein_loss(real)
+        pred_loss = nn_utils.wasserstein_loss(pred)
+        gp_loss = nn_utils.compute_gradient_penalty(discriminator, real_sample, pred_sample) * gradient_penalty_weight
+        # gp_loss = nn_utils.gradient_penalty_loss(avg, random_average_ab, gradient_penalty_weight)
 
-        print("real: "+str(real_loss))
-        print("pred: "+str(pred_loss))
-        print("grad: "+str(gp_loss))
+        print("real: " + str(real_loss))
+        print("pred: " + str(pred_loss))
+        print("grad: " + str(gp_loss))
         return -1 * real_loss + \
                1 * pred_loss + \
                1 * gp_loss
@@ -83,11 +84,6 @@ def train_gan():
     vgg_top = partial_vgg.get_vgg_top()  # Yes it's strange that the bottom gets trained but the top doesn't
     discriminator = network.Discriminator()
     generator = network.Colorization_Model()
-
-    # Real, Fake and Dummy for Discriminator
-    positive_y = np.ones((config.batch_size, 1), dtype=np.float32)
-    negative_y = -positive_y
-    dummy_y = np.zeros((config.batch_size, 1), dtype=np.float32)
 
     gen_optimizer = get_gen_optimizer(vgg_bottom, generator)
     disc_optimizer = get_disc_optimizer(discriminator)
@@ -128,18 +124,17 @@ def train_gan():
 
             discrim_from_real = discriminator(torch.concat([grey, ab], dim=1))
             discrim_from_predicted = discriminator(torch.concat([grey, predicted_ab], dim=1))
-            discrim_from_avg = discriminator(torch.concat([grey, random_average_ab], dim=1))
 
             # Train generator
             gen_loss = gen_criterion(predicted_ab, predicted_classes, discrim_from_predicted,
-                                     ab, vgg_out, positive_y)
+                                     ab, vgg_out)
             gen_optimizer.zero_grad()
             gen_loss.backward(retain_graph=True)
             running_gen_loss = running_gen_loss + gen_loss.item()
 
             # Train discriminator
-            disc_loss = disc_criterion(discrim_from_real, discrim_from_predicted, discrim_from_avg,
-                                       positive_y, negative_y, dummy_y, random_average_ab)
+            disc_loss = disc_criterion(discrim_from_real, discrim_from_predicted, torch.concat([grey, ab], dim=1),
+                                       torch.concat([grey, predicted_ab], dim=1), discriminator)
             disc_optimizer.zero_grad()
             disc_loss.backward()
             running_disc_loss = running_disc_loss + gen_loss.item()

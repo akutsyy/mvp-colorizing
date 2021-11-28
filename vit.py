@@ -117,7 +117,6 @@ class ViT(nn.Module):
         x = self.dropout(x)
 
         x = self.transformer(x)
-        print("transformer shape: "+str(x.shape))
 
         x = x.mean(dim = 2) if self.pool == 'mean' else x[:, 0]
 

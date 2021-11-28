@@ -70,6 +70,10 @@ def generate_from_bw(device, vgg_bottom, unflatten, generator, grey):
 
 
 def train_gan():
+    
+    import os
+    os.environ['CUDA_VISIBLE_DEVICES']='2,3'
+    
     # Get cpu or gpu device for training.
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -88,12 +92,12 @@ def train_gan():
         image_size = 224,
         patch_size = 8,
         num_classes = 2,
-        dim = 3,
-        depth = 2,
-        heads = 4,
-        mlp_dim = 32,
-        dropout = 0.4,
-        emb_dropout = 0.4,
+        dim = 1,
+        depth = 1,
+        heads = 2,
+        mlp_dim = 16,
+        dropout = 0.1,
+        emb_dropout = 0.1,
         pool='mean')
     generator = network.Colorization_Model()
 
@@ -149,13 +153,17 @@ def train_gan():
                                        torch.concat([grey, predicted_ab], dim=1), discriminator)
             disc_optimizer.zero_grad()
             disc_loss.backward()
-            running_disc_loss = running_disc_loss + gen_loss.item()
+            running_disc_loss = running_disc_loss + disc_loss.item()
 
             gen_optimizer.step()
             disc_optimizer.step()
 
             # Save a demo image after every 10 batches, for testing
-            if i % 10 == 0:
+            if i % 1 == 0:
+                print("Generator Loss: "+str(running_gen_loss))
+                print("Discriminator Loss: "+str(running_disc_loss))
+                running_gen_loss = 0.
+                running_disc_loss =0.
                 demo_ab = generate_from_bw(device, vgg_bottom, unflatten, generator, demo_bw)
                 # Reshape dimensions to be as expected
                 processed_ab = torch.squeeze(demo_ab, dim=0)

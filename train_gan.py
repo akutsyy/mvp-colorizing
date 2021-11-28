@@ -82,7 +82,18 @@ def train_gan():
     # Load models
     vgg_bottom, unflatten = partial_vgg.get_partial_vgg()
     vgg_top = partial_vgg.get_vgg_top()  # Yes it's strange that the bottom gets trained but the top doesn't
-    discriminator = network.Discriminator()
+    #discriminator = network.Discriminator()
+    discriminator = vit.ViT(
+        image_size = 224,
+        patch_size = 8,
+        num_classes = 2,
+        dim = 3,
+        depth = 2,
+        heads = 4,
+        mlp_dim = 32,
+        dropout = 0.4,
+        emb_dropout = 0.4,
+        pool='mean')
     generator = network.Colorization_Model()
 
     gen_optimizer = get_gen_optimizer(vgg_bottom, generator)

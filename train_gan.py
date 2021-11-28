@@ -30,9 +30,9 @@ def get_gen_criterion():
         mse_loss = nn_utils.mse(ab, true_ab)
         kld_loss = kld(torch.log(classes), functional.softmax(true_labels, dim=1))
         wasser_loss = nn_utils.wasserstein_loss(discrim)
-        print("mse: " + str(mse_loss))
-        print("kld: " + str(kld_loss))
-        print("wasser: " + str(wasser_loss))
+        print("mse: " + str(mse_loss.item()))
+        print("kld: " + str(kld_loss.item()))
+        print("wasser: " + str(wasser_loss.item()))
         loss = 1 * mse_loss \
                + 0.003 * kld_loss \
                - 0.1 * wasser_loss
@@ -49,9 +49,9 @@ def get_disc_criterion():
         gp_loss = nn_utils.compute_gradient_penalty(discriminator, real_sample, pred_sample) * gradient_penalty_weight
         # gp_loss = nn_utils.gradient_penalty_loss(avg, random_average_ab, gradient_penalty_weight)
 
-        print("real: " + str(real_loss))
-        print("pred: " + str(pred_loss))
-        print("grad: " + str(gp_loss))
+        print("real: " + str(real_loss.item()))
+        print("pred: " + str(pred_loss.item()))
+        print("grad: " + str(gp_loss.item()))
         return -1 * real_loss + \
                1 * pred_loss + \
                1 * gp_loss
@@ -75,7 +75,7 @@ def train_gan():
     print("Loading data...")
     train_loader, test_loader, train_len, test_len = dataset.get_datasets()
     print("Loaded")
-    save_models_path = os.path.join(config.model_dir, config.test_name)
+    save_models_path = os.path.join(config.model_dir)
     if not os.path.exists(save_models_path):
         os.makedirs(save_models_path)
 
@@ -95,64 +95,69 @@ def train_gan():
 
     num_batches = int(len(train_loader) / config.batch_size)
     # torch.autograd.set_detect_anomaly(True)
+    with open('logging.txt', 'w') as log:
+        sys.stdout = log
+        print("New Training Sequence:")
+        for epoch in range(config.num_epochs):
+            #print("Training epoch " + str(epoch))
+            running_gen_loss = 0.0
+            running_disc_loss = 0.0
+            for i, data in enumerate(train_loader, 0):
 
-    for epoch in range(config.num_epochs):
-        print("Training epoch " + str(epoch))
-        running_gen_loss = 0.0
-        running_disc_loss = 0.0
-        for i, data in enumerate(train_loader, 0):
+                # Print progress
+                log.flush()
+                print("Epoch "+str(epoch)+" Batch " + str(i))
 
-            # Print progress
-            # sys.stdout.write('\r')
-            # sys.stdout.write("[%-20s] %d%%" % ('='*((50*i)//num_batches), 100* i//num_batches))
-            # sys.stdout.flush()
-            print("Batch " + str(i))
+                # ab channels of l*a*b color space - is color
+                ab, grey = data
+                ab, grey = ab.to(device), grey.to(device)
+                # Images are in l*a*b* space, normalized
 
-            # ab channels of l*a*b color space - is color
-            ab, grey = data
-            ab, grey = ab.to(device), grey.to(device)
-            # Images are in l*a*b* space, normalized
+                # Use pre-trained VGG as in original paper
+                grey_3 = grey.repeat(1, 3, 1, 1).to(device)
+                vgg_bottom_out_flat = vgg_bottom(grey_3)
+                # To undo the flatten operation in vgg_bottom
+                vgg_bottom_out = unflatten(vgg_bottom_out_flat)
+                vgg_out = vgg_top(vgg_bottom_out)
+                predicted_ab, predicted_classes = generator(vgg_bottom_out)
+                random_average_ab = nn_utils.random_weighted_average(predicted_ab, ab)
 
-            # Use pre-trained VGG as in original paper
-            grey_3 = grey.repeat(1, 3, 1, 1).to(device)
-            vgg_bottom_out_flat = vgg_bottom(grey_3)
-            # To undo the flatten operation in vgg_bottom
-            vgg_bottom_out = unflatten(vgg_bottom_out_flat)
-            vgg_out = vgg_top(vgg_bottom_out)
-            predicted_ab, predicted_classes = generator(vgg_bottom_out)
-            random_average_ab = nn_utils.random_weighted_average(predicted_ab, ab)
+                discrim_from_real = discriminator(torch.concat([grey, ab], dim=1))
+                discrim_from_predicted = discriminator(torch.concat([grey, predicted_ab], dim=1))
 
-            discrim_from_real = discriminator(torch.concat([grey, ab], dim=1))
-            discrim_from_predicted = discriminator(torch.concat([grey, predicted_ab], dim=1))
+                # Train generator
+                gen_loss = gen_criterion(predicted_ab, predicted_classes, discrim_from_predicted,
+                                         ab, vgg_out)
+                gen_optimizer.zero_grad()
+                gen_loss.backward(retain_graph=True)
+                running_gen_loss = running_gen_loss + gen_loss.item()
 
-            # Train generator
-            gen_loss = gen_criterion(predicted_ab, predicted_classes, discrim_from_predicted,
-                                     ab, vgg_out)
-            gen_optimizer.zero_grad()
-            gen_loss.backward(retain_graph=True)
-            running_gen_loss = running_gen_loss + gen_loss.item()
+                # Train discriminator
+                disc_loss = disc_criterion(discrim_from_real, discrim_from_predicted, torch.concat([grey, ab], dim=1),
+                                           torch.concat([grey, predicted_ab], dim=1), discriminator)
+                disc_optimizer.zero_grad()
+                disc_loss.backward()
+                running_disc_loss = running_disc_loss + gen_loss.item()
 
-            # Train discriminator
-            disc_loss = disc_criterion(discrim_from_real, discrim_from_predicted, torch.concat([grey, ab], dim=1),
-                                       torch.concat([grey, predicted_ab], dim=1), discriminator)
-            disc_optimizer.zero_grad()
-            disc_loss.backward()
-            running_disc_loss = running_disc_loss + gen_loss.item()
+                gen_optimizer.step()
+                disc_optimizer.step()
 
-            gen_optimizer.step()
-            disc_optimizer.step()
+                # Save a demo image after every 10 batches
+                if i % 10 == 0:
+                    demo_ab = generate_from_bw(device, vgg_bottom, unflatten, generator, demo_bw)
+                    # Reshape dimensions to be as expected
+                    processed_ab = torch.squeeze(demo_ab, dim=0)
+                    processed_image = dataset.to_image(demo_bw, processed_ab)
+                    plt.imsave("test_output/e" + str(epoch) + "b" + str(i) + ".png", processed_image.numpy())
 
-            # Save a demo image after every 10 batches, for testing
-            if i % 10 == 0:
-                demo_ab = generate_from_bw(device, vgg_bottom, unflatten, generator, demo_bw)
-                # Reshape dimensions to be as expected
-                processed_ab = torch.squeeze(demo_ab, dim=0)
-                processed_image = dataset.to_image(demo_bw, processed_ab)
-                plt.imsave("test_output/e" + str(epoch) + "b" + str(i) + ".png", processed_image.numpy())
-
-        torch.save(vgg_bottom.state_dict(), save_models_path + "/vgg_bottom_" + str(epoch) + ".pth")
-        torch.save(generator.state_dict(), save_models_path + "/generator_" + str(epoch) + ".pth")
-        torch.save(discriminator.state_dict(), save_models_path + "/discriminator_" + str(epoch) + ".pth")
+                # Save the models every 100 batches
+                if i % 100 == 99:
+                    torch.save(vgg_bottom.state_dict(),
+                               save_models_path + "/vgg_bottom_e" + str(epoch) + "_b" + str(i) + ".pth")
+                    torch.save(generator.state_dict(),
+                               save_models_path + "/generator_e" + str(epoch) + "_b" + str(i) + ".pth")
+                    torch.save(discriminator.state_dict(),
+                               save_models_path + "/discriminator_e" + str(epoch) + "_b" + str(i) + ".pth")
 
 
 if __name__ == '__main__':

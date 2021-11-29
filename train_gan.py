@@ -21,7 +21,7 @@ def get_gen_optimizer(vgg_bottom, gen):
 
 
 def get_disc_optimizer(discriminator):
-    return torch.optim.Adam(discriminator.parameters(), lr=0.00002, betas=(0.5, 0.999))
+    return torch.optim.Adam(discriminator.parameters(), lr=0.002, betas=(0.5, 0.999))
 
 
 def get_gen_criterion():
@@ -72,6 +72,7 @@ def generate_from_bw(device, vgg_bottom, unflatten, generator, grey):
 def train_gan():
     # Get cpu or gpu device for training.
     device = "cuda" if torch.cuda.is_available() else "cpu"
+    #device = "cpu"
 
     print("Loading data...")
     train_loader, test_loader, train_len, test_len = dataset.get_datasets()
@@ -82,7 +83,10 @@ def train_gan():
 
     # Load models
     vgg_bottom, unflatten = partial_vgg.get_partial_vgg()
-    vgg_top = partial_vgg.get_vgg_top()  # Yes it's strange that the bottom gets trained but the top doesn't
+    vgg_bottom, unflatten = vgg_bottom.to(device), unflatten.to(device)
+    vgg_top = partial_vgg.get_vgg_top()
+    vgg_top = vgg_top.to(device)
+    # Yes it's strange that the bottom gets trained but the top doesn't
     #discriminator = network.Discriminator()
     discriminator = vit.ViT(
         image_size = 224,
@@ -90,12 +94,14 @@ def train_gan():
         num_classes = 2,
         dim = 1,
         depth = 1,
-        heads = 2,
-        mlp_dim = 16,
-        dropout = 0.1,
-        emb_dropout = 0.1,
+        heads = 1,
+        mlp_dim = 1,
+        dropout = 0.5,
+        emb_dropout = 0.5,
         pool='mean')
     generator = network.Colorization_Model()
+    discriminator.to(device)
+    generator.to(device)
 
     gen_optimizer = get_gen_optimizer(vgg_bottom, generator)
     disc_optimizer = get_disc_optimizer(discriminator)
@@ -149,7 +155,7 @@ def train_gan():
                                            torch.concat([grey, predicted_ab], dim=1), discriminator)
                 disc_optimizer.zero_grad()
                 disc_loss.backward()
-                running_disc_loss = running_disc_loss + gen_loss.item()
+                running_disc_loss = running_disc_loss + disc_loss.item()
 
                 gen_optimizer.step()
                 disc_optimizer.step()
@@ -163,17 +169,19 @@ def train_gan():
                     demo_ab = generate_from_bw(device, vgg_bottom, unflatten, generator, demo_bw)
                     # Reshape dimensions to be as expected
                     processed_ab = torch.squeeze(demo_ab, dim=0)
+                    demo_bw = demo_bw.to(device)
+                    processed_ab = processed_ab.to(device)
                     processed_image = dataset.to_image(demo_bw, processed_ab)
-                    plt.imsave("test_output/e" + str(epoch) + "b" + str(i) + ".png", processed_image.numpy())
+                    plt.imsave("/home/jlf60/mvp-colorizing/test_output/e" + str(epoch) + "b" + str(i) + ".png", processed_image.numpy())
 
                 # Save the models every 100 batches
                 if i % 100 == 99:
                     torch.save(vgg_bottom.state_dict(),
-                               save_models_path + "/vgg_bottom_e" + str(epoch) + "_b" + str(i) + ".pth")
+                               save_models_path + "vgg_bottom_e" + str(epoch) + "_b" + str(i) + ".pth")
                     torch.save(generator.state_dict(),
-                               save_models_path + "/generator_e" + str(epoch) + "_b" + str(i) + ".pth")
+                               save_models_path + "generator_e" + str(epoch) + "_b" + str(i) + ".pth")
                     torch.save(discriminator.state_dict(),
-                               save_models_path + "/discriminator_e" + str(epoch) + "_b" + str(i) + ".pth")
+                               save_models_path + "discriminator_e" + str(epoch) + "_b" + str(i) + ".pth")
 
 
 if __name__ == '__main__':

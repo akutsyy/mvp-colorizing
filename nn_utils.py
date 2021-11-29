@@ -10,8 +10,11 @@ def get_all_dims(tensor):
     return tuple(range(0, len(tensor.shape)))
 
 def random_weighted_average(a, b):
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    #device = "cpu"
     batch = a.shape[0]
     weights = torch.rand(batch)
+    weights = weights.to(device)
     return weights[:, None, None, None] * a + (1 - weights[:, None, None, None]) * b
 
 
@@ -48,11 +51,15 @@ def gradient_penalty_loss(y_pred, averaged_samples,
 def compute_gradient_penalty(D, real_samples, fake_samples):
     """Calculates the gradient penalty loss for WGAN GP"""
     # Random weight term for interpolation between real and fake samples
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    #device = "cpu"
     alpha = torch.Tensor(np.random.random((real_samples.size(0), 1, 1, 1)))
+    alpha = alpha.to(device)
     # Get random interpolation between real and fake samples
     interpolates = (alpha * real_samples + ((1 - alpha) * fake_samples)).requires_grad_(True)
     d_interpolates = D(interpolates)
     fake = torch.autograd.Variable(torch.Tensor(d_interpolates.shape).fill_(1.0), requires_grad=False)
+    fake = fake.to(device)
 
     # Get gradient w.r.t. interpolates
     gradients = torch.autograd.grad(

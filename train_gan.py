@@ -69,7 +69,7 @@ def generate_from_bw(device, vgg_bottom, unflatten, generator, grey):
     return predicted_ab
 
 
-def train_gan():
+def train_gan(vgg_pth=None, gen_pth=None, disc_pth=None, epoch=0, batch=0):
     # Get cpu or gpu device for training.
     device = "cuda" if torch.cuda.is_available() else "cpu"
     #device = "cpu"
@@ -100,8 +100,16 @@ def train_gan():
         emb_dropout = 0.5,
         pool='mean')
     generator = network.Colorization_Model()
+    
     discriminator.to(device)
     generator.to(device)
+    
+    if disc_pth != None:
+        discriminator.load_state_dict(torch.load(disc_pth))
+    if gen_pth != None:
+        generator.load_state_dict(torch.load(gen_pth))
+    if vgg_pth != None:
+        vgg_bottom.load_state_dict(torch.load(vgg_pth))
 
     gen_optimizer = get_gen_optimizer(vgg_bottom, generator)
     disc_optimizer = get_disc_optimizer(discriminator)
@@ -116,11 +124,11 @@ def train_gan():
     with open('logging.txt', 'w') as log:
         sys.stdout = log
         print("New Training Sequence:")
-        for epoch in range(config.num_epochs):
+        for epoch in range(epoch, config.num_epochs):
             #print("Training epoch " + str(epoch))
             running_gen_loss = 0.0
             running_disc_loss = 0.0
-            for i, data in enumerate(train_loader, 0):
+            for i, data in enumerate(train_loader, batch):
 
                 # Print progress
                 log.flush()
@@ -185,4 +193,4 @@ def train_gan():
 
 
 if __name__ == '__main__':
-    train_gan()
+    train_gan(vgg_pth="/home/jlf60/mvp-colorizing/models/vgg_bottom_e0_b539.pth", gen_pth="/home/jlf60/mvp-colorizing/models/generator_e0_b539.pth", disc_pth="/home/jlf60/mvp-colorizing/models/discriminator_e0_b539.pth", epoch=0, batch=540)

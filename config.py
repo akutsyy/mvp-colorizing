@@ -4,5 +4,6 @@ num_workers = 4
 learning_rate = 0.01
 model_dir = "models"
 num_epochs = 1
+use_gpu = True
 
 

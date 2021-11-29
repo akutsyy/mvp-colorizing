@@ -70,7 +70,7 @@ def generate_from_bw(device, vgg_bottom, unflatten, generator, grey):
 
 def train_gan():
     # Get cpu or gpu device for training.
-    device = "cuda" if torch.cuda.is_available() else "cpu"
+    device = "cuda" if config.use_gpu and torch.cuda.is_available() else "cpu"
     print(device)
 
     print("Loading data...")
@@ -91,9 +91,6 @@ def train_gan():
     disc_optimizer = get_disc_optimizer(discriminator)
     gen_criterion = get_gen_criterion()
     disc_criterion = get_disc_criterion()
-
-    demo_data = next(iter(test_loader))
-    demo_bw = demo_data[1][0]
 
     num_batches = int(len(train_loader) / config.batch_size)
     # torch.autograd.set_detect_anomaly(True)
@@ -148,10 +145,9 @@ def train_gan():
 
                 # Save a demo image after every 10 batches
                 if i % 10 == 0:
-                    demo_ab = generate_from_bw(device, vgg_bottom, unflatten, generator, demo_bw)
                     # Reshape dimensions to be as expected
-                    processed_ab = torch.squeeze(demo_ab, dim=0)
-                    processed_image = dataset.to_image(demo_bw, processed_ab)
+                    processed_ab = torch.squeeze(predicted_ab[0], dim=0)
+                    processed_image = dataset.to_image(data[1][0], processed_ab)
                     plt.imsave("test_output/e" + str(epoch) + "b" + str(i) + ".png", processed_image.numpy())
 
                 # Save the models every 100 batches

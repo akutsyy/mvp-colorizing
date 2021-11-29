@@ -9,9 +9,9 @@ import torch.nn as nn
 def get_all_dims(tensor):
     return tuple(range(0, len(tensor.shape)))
 
-def random_weighted_average(a, b):
+def random_weighted_average(a, b, device='cpu'):
     batch = a.shape[0]
-    weights = torch.rand(batch)
+    weights = torch.rand(batch).to(device)
     return weights[:, None, None, None] * a + (1 - weights[:, None, None, None]) * b
 
 

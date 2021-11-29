@@ -71,6 +71,7 @@ def generate_from_bw(device, vgg_bottom, unflatten, generator, grey):
 def train_gan():
     # Get cpu or gpu device for training.
     device = "cuda" if torch.cuda.is_available() else "cpu"
+    print(device)
 
     print("Loading data...")
     train_loader, test_loader, train_len, test_len = dataset.get_datasets()
@@ -81,9 +82,10 @@ def train_gan():
 
     # Load models
     vgg_bottom, unflatten = partial_vgg.get_partial_vgg()
-    vgg_top = partial_vgg.get_vgg_top()  # Yes it's strange that the bottom gets trained but the top doesn't
-    discriminator = network.Discriminator()
-    generator = network.Colorization_Model()
+    vgg_bottom = vgg_bottom.to(device)
+    vgg_top = partial_vgg.get_vgg_top().to(device)  # Yes it's strange that the bottom gets trained but the top doesn't
+    discriminator = network.Discriminator().to(device)
+    generator = network.Colorization_Model().to(device)
 
     gen_optimizer = get_gen_optimizer(vgg_bottom, generator)
     disc_optimizer = get_disc_optimizer(discriminator)
@@ -120,7 +122,7 @@ def train_gan():
                 vgg_bottom_out = unflatten(vgg_bottom_out_flat)
                 vgg_out = vgg_top(vgg_bottom_out)
                 predicted_ab, predicted_classes = generator(vgg_bottom_out)
-                random_average_ab = nn_utils.random_weighted_average(predicted_ab, ab)
+                random_average_ab = nn_utils.random_weighted_average(predicted_ab, ab,device=device)
 
                 discrim_from_real = discriminator(torch.concat([grey, ab], dim=1))
                 discrim_from_predicted = discriminator(torch.concat([grey, predicted_ab], dim=1))
@@ -130,17 +132,19 @@ def train_gan():
                                          ab, vgg_out)
                 gen_optimizer.zero_grad()
                 gen_loss.backward(retain_graph=True)
-                running_gen_loss = running_gen_loss + gen_loss.item()
+                running_gen_loss = running_gen_loss + gen_loss.detach().item()
 
                 # Train discriminator
                 disc_loss = disc_criterion(discrim_from_real, discrim_from_predicted, torch.concat([grey, ab], dim=1),
                                            torch.concat([grey, predicted_ab], dim=1), discriminator)
                 disc_optimizer.zero_grad()
                 disc_loss.backward()
-                running_disc_loss = running_disc_loss + gen_loss.item()
+                running_disc_loss = running_disc_loss + disc_loss.detach().item()
 
                 gen_optimizer.step()
                 disc_optimizer.step()
+                print("Generator loss: "+str(gen_loss.item()))
+                print("Discriminator loss: "+str(disc_loss.item()))
 
                 # Save a demo image after every 10 batches
                 if i % 10 == 0:
@@ -151,7 +155,7 @@ def train_gan():
                     plt.imsave("test_output/e" + str(epoch) + "b" + str(i) + ".png", processed_image.numpy())
 
                 # Save the models every 100 batches
-                if i % 100 == 99:
+                if i % 50 == 49:
                     torch.save(vgg_bottom.state_dict(),
                                save_models_path + "/vgg_bottom_e" + str(epoch) + "_b" + str(i) + ".pth")
                     torch.save(generator.state_dict(),

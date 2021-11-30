@@ -17,11 +17,11 @@ import vit
 
 def get_gen_optimizer(vgg_bottom, gen):
     params = list(vgg_bottom.parameters()) + list(gen.parameters())
-    return torch.optim.Adam(params, lr=0.00002, betas=(0.5, 0.999))
+    return torch.optim.Adam(params, lr=0.000002, betas=(0.5, 0.999))
 
 
 def get_disc_optimizer(discriminator):
-    return torch.optim.Adam(discriminator.parameters(), lr=0.002, betas=(0.5, 0.999))
+    return torch.optim.Adam(discriminator.parameters(), lr=0.00002, betas=(0.5, 0.999))
 
 
 def get_gen_criterion():
@@ -93,8 +93,8 @@ def train_gan(vgg_pth=None, gen_pth=None, disc_pth=None, epoch=0, batch=0):
         patch_size = 8,
         num_classes = 2,
         dim = 1,
-        depth = 1,
-        heads = 1,
+        depth = 2,
+        heads = 2,
         mlp_dim = 1,
         dropout = 0.5,
         emb_dropout = 0.5,
@@ -183,7 +183,7 @@ def train_gan(vgg_pth=None, gen_pth=None, disc_pth=None, epoch=0, batch=0):
                     plt.imsave("/home/jlf60/mvp-colorizing/test_output/e" + str(epoch) + "b" + str(i) + ".png", processed_image.numpy())
 
                 # Save the models every 100 batches
-                if i % 100 == 99:
+                if i % 500 == 499:
                     torch.save(vgg_bottom.state_dict(),
                                save_models_path + "vgg_bottom_e" + str(epoch) + "_b" + str(i) + ".pth")
                     torch.save(generator.state_dict(),
@@ -192,5 +192,8 @@ def train_gan(vgg_pth=None, gen_pth=None, disc_pth=None, epoch=0, batch=0):
                                save_models_path + "discriminator_e" + str(epoch) + "_b" + str(i) + ".pth")
 
 
+#if __name__ == '__main__':
+    #train_gan(vgg_pth="/home/jlf60/mvp-colorizing/models/vgg_bottom_e0_b2999.pth", gen_pth="/home/jlf60/mvp-colorizing/models/generator_e0_b2999.pth", disc_pth="/home/jlf60/mvp-colorizing/models/discriminator_e0_b2999.pth", epoch=1, batch=0)
+    
 if __name__ == '__main__':
-    train_gan(vgg_pth="/home/jlf60/mvp-colorizing/models/vgg_bottom_e0_b539.pth", gen_pth="/home/jlf60/mvp-colorizing/models/generator_e0_b539.pth", disc_pth="/home/jlf60/mvp-colorizing/models/discriminator_e0_b539.pth", epoch=0, batch=540)
+    train_gan()

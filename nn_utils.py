@@ -29,26 +29,10 @@ def mse(y_pred, y_true):
     return torch.mean((y_pred - y_true) ** 2)
 
 
-def gradient_penalty_loss(y_pred, averaged_samples,
-                          gradient_penalty_weight=10):
-    # Intent:
-    # Get gradient from y_pred down to averaged_samples
-    # norm = sqrt(sum_all_but_batch(grads**2))
-    # Penalty = mean_over_batch(weight*(1-norm)**2)
-    ones = torch.tensor(numpy.ones_like(y_pred.detach().numpy()))
-    gradients = torch.autograd.grad(y_pred, averaged_samples, grad_outputs=ones,retain_graph=True)[0]
-
-    gradients_sqr = gradients ** 2
-    gradients_sqr_sum = torch.sum(gradients_sqr,
-                                  dim=get_all_dims(y_pred)[1:])
-    gradient_l2_norm = torch.sqrt(gradients_sqr_sum)
-    gradient_penalty = gradient_penalty_weight * (1 - gradient_l2_norm) ** 2
-    return torch.mean(gradient_penalty)
-
-def compute_gradient_penalty(D, real_samples, fake_samples):
+def compute_gradient_penalty(D, real_samples, fake_samples,device='cpu'):
     """Calculates the gradient penalty loss for WGAN GP"""
     # Random weight term for interpolation between real and fake samples
-    alpha = torch.Tensor(np.random.random((real_samples.size(0), 1, 1, 1)))
+    alpha = torch.Tensor(np.random.random((real_samples.size(0), 1, 1, 1))).to(device)
     # Get random interpolation between real and fake samples
     interpolates = (alpha * real_samples + ((1 - alpha) * fake_samples)).requires_grad_(True)
     d_interpolates = D(interpolates)

@@ -41,12 +41,12 @@ def get_gen_criterion():
     return loss_function
 
 
-def get_disc_criterion():
+def get_disc_criterion(device='cpu'):
     def loss_function(real, pred, real_sample, pred_sample, discriminator,
                       gradient_penalty_weight=10):
         real_loss = nn_utils.wasserstein_loss(real)
         pred_loss = nn_utils.wasserstein_loss(pred)
-        gp_loss = nn_utils.compute_gradient_penalty(discriminator, real_sample, pred_sample) * gradient_penalty_weight
+        gp_loss = nn_utils.compute_gradient_penalty(discriminator, real_sample, pred_sample, device=device) * gradient_penalty_weight
         # gp_loss = nn_utils.gradient_penalty_loss(avg, random_average_ab, gradient_penalty_weight)
 
         print("real: " + str(real_loss.item()))
@@ -90,7 +90,7 @@ def train_gan():
     gen_optimizer = get_gen_optimizer(vgg_bottom, generator)
     disc_optimizer = get_disc_optimizer(discriminator)
     gen_criterion = get_gen_criterion()
-    disc_criterion = get_disc_criterion()
+    disc_criterion = get_disc_criterion(device)
 
     num_batches = int(len(train_loader) / config.batch_size)
     # torch.autograd.set_detect_anomaly(True)

@@ -82,7 +82,7 @@ def train_gan():
 
     # Load models
     vgg_bottom, unflatten = partial_vgg.get_partial_vgg()
-    vgg_bottom = vgg_bottom.to(device)
+    vgg_bottom, unflatten = vgg_bottom.to(device), unflatten.to(device)
     vgg_top = partial_vgg.get_vgg_top().to(device)  # Yes it's strange that the bottom gets trained but the top doesn't
     discriminator = network.Discriminator().to(device)
     generator = network.Colorization_Model().to(device)

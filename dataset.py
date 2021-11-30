@@ -131,7 +131,7 @@ def display_dataset_sample():
     plt.show()
 
 def to_image(bw,color):
-    full_image = torch.concat([bw*100, color*255-127], dim=0)
+    full_image = torch.concat([bw.to('cpu')*100, color.to('cpu')*255-127], dim=0)
     full_color = torch.permute(
         transforms.ToTensor()(skcolor.lab2rgb(torch.permute(full_image, (1, 2, 0)).detach().numpy())),
         (1, 2, 0))

@@ -109,13 +109,15 @@ def train_gan(e=None, b=None):
     # torch.autograd.set_detect_anomaly(True)
     with open('logging.txt', 'w') as log, open('errors.txt', 'w') as err:
         sys.stdout = log
-        sys.stderr = err
+        #sys.stderr = err
         print("New Training Sequence:")
         for epoch in range(e, config.num_epochs):
             #print("Training epoch " + str(epoch))
             running_gen_loss = 0.0
             running_disc_loss = 0.0
-            for i, data in enumerate(train_loader, 0)[b:]:
+            for i, data in enumerate(train_loader, 0):
+                if i<b:
+                    continue
                 # Print progress
                 log.flush()
                 print("Epoch "+str(epoch)+" Batch " + str(i))

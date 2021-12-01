@@ -54,8 +54,8 @@ def get_disc_criterion(device='cpu'):
         print("real: " + str(real_loss.item()))
         print("pred: " + str(pred_loss.item()))
         print("grad: " + str(gp_loss.item()))
-        return 1 * real_loss + \
-            -1 * pred_loss + \
+        return -1 * real_loss + \
+            1 * pred_loss + \
             1 * gp_loss
 
     return loss_function
@@ -76,7 +76,7 @@ def train_gan(e=None, b=None):
     print(device)
 
     print("Loading data...")
-    train_loader, test_loader, train_len, test_len = dataset.get_datasets()
+    train_loader, test_loader, train_len, test_len = dataset.get_loaders()
     print("Loaded")
     save_models_path = os.path.join(config.model_dir)
     if not os.path.exists(save_models_path):
@@ -136,8 +136,6 @@ def train_gan(e=None, b=None):
                 vgg_bottom_out = unflatten(vgg_bottom_out_flat)
                 vgg_out = vgg_top(vgg_bottom_out)
                 predicted_ab, predicted_classes = generator(vgg_bottom_out)
-                random_average_ab = nn_utils.random_weighted_average(
-                    predicted_ab, ab, device=device)
 
                 discrim_from_real = discriminator(
                     torch.concat([grey, ab], dim=1))

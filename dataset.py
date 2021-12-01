@@ -90,7 +90,7 @@ class UCF101ImageDataset(Dataset):
         return sample
 
 
-def get_datasets():
+def get_loaders():
     train_set = UCF101ImageDataset("dataset/UCF101Images_train")
     test_set = UCF101ImageDataset("dataset/UCF101Images_eval")
     train_loader = torch.utils.data.DataLoader(train_set,
@@ -104,6 +104,10 @@ def get_datasets():
                                               num_workers=config.num_workers)
     return train_loader, test_loader, len(train_set), len(test_set)
 
+def get_datasets():
+    train_set = UCF101ImageDataset("dataset/UCF101Images_train")
+    test_set = UCF101ImageDataset("dataset/UCF101Images_eval")
+    return train_set, test_set
 
 def display_dataset_sample():
 
@@ -142,7 +146,7 @@ def to_image(bw,color):
 if __name__ == '__main__':
     display_dataset_sample()
     print("Loading")
-    train_loader, test_loader, train_len, test_len = get_datasets()
+    train_loader, test_loader, train_len, test_len = get_loaders()
     print("Loaded")
     start = time.time()
     for i, x in enumerate(train_loader):

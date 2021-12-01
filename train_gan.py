@@ -91,6 +91,8 @@ def train_gan(e=None, b=None):
     generator = network.Colorization_Model().to(device)
 
     if e is not None and b is not None:
+        e = int(e)
+        b = int(b)
         vgg_bottom.load_state_dict(torch.load(
             "models/vgg_bottom_e"+str(e)+"_b"+str(b)+".pth"))
         discriminator.load_state_dict(torch.load(
@@ -184,9 +186,10 @@ def train_gan(e=None, b=None):
 
 if __name__ == '__main__':
     args = sys.argv[1:]
-    if len(sys.argv) == 2:
+    if len(args) == 2:
+        print("Using epoch and batch from args")
         epoch = args[0]
         batch = args[1]
-        train_gan(epoch=epoch, batch=batch)
+        train_gan(e=epoch, b=batch)
     else:
         train_gan()

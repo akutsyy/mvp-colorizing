@@ -68,7 +68,7 @@ def generate_from_bw(device, vgg_bottom, unflatten, generator, grey):
     return predicted_ab
 
 
-def train_gan(epoch=None,batch=None):
+def train_gan(e=None,b=None):
     # Get cpu or gpu device for training.
     device = "cuda" if config.use_gpu and torch.cuda.is_available() else "cpu"
     print(device)
@@ -89,11 +89,13 @@ def train_gan(epoch=None,batch=None):
     generator = network.Colorization_Model().to(device)
 
     
-    if epoch is not None and batch is not None:
-        vgg_bottom.load_state_dict(torch.load("models/vgg_bottom_e"+str(epoch)+"_b"+str(batch)+".pth"))
-        discriminator.load_state_dict(torch.load("models/discriminator_e"+str(epoch)+"_b"+str(batch)+".pth"))
-        generator.load_state_dict(torch.load("models/generator_e"+str(epoch)+"_b"+str(batch)+".pth"))
-
+    if e is not None and b is not None:
+        vgg_bottom.load_state_dict(torch.load("models/vgg_bottom_e"+str(e)+"_b"+str(b)+".pth"))
+        discriminator.load_state_dict(torch.load("models/discriminator_e"+str(e)+"_b"+str(b)+".pth"))
+        generator.load_state_dict(torch.load("models/generator_e"+str(e)+"_b"+str(b)+".pth"))
+    else:
+        e = 0
+        b = 0
     gen_optimizer = get_gen_optimizer(vgg_bottom, generator)
     disc_optimizer = get_disc_optimizer(discriminator)
     gen_criterion = get_gen_criterion()
@@ -105,12 +107,11 @@ def train_gan(epoch=None,batch=None):
         sys.stdout = log
         sys.stderr = err
         print("New Training Sequence:")
-        for epoch in range(config.num_epochs):
+        for epoch in range(e,config.num_epochs):
             #print("Training epoch " + str(epoch))
             running_gen_loss = 0.0
             running_disc_loss = 0.0
-            for i, data in enumerate(train_loader, 0):
-
+            for i, data in enumerate(train_loader, 0)[b:]:
                 # Print progress
                 log.flush()
                 print("Epoch "+str(epoch)+" Batch " + str(i))
@@ -167,7 +168,7 @@ def train_gan(epoch=None,batch=None):
                     torch.save(discriminator.state_dict(),
                                save_models_path + "/discriminator_e" + str(epoch) + "_b" + str(i) + ".pth")
 
-
+            b=0
 if __name__ == '__main__':
     args = sys.argv[1:]
     if len(sys.argv) == 2:

@@ -118,8 +118,8 @@ def train_gan(e=None, b=None):
             running_gen_loss = 0.0
             running_disc_loss = 0.0
             for i, data in enumerate(train_loader, 0):
-                if i<b:
-                    continue
+                if i>train_len-b:
+                    break
                 # Print progress
                 log.flush()
                 print("Epoch "+str(epoch)+" Batch " + str(i))

@@ -17,11 +17,11 @@ import vit
 
 def get_gen_optimizer(vgg_bottom, gen):
     params = list(vgg_bottom.parameters()) + list(gen.parameters())
-    return torch.optim.Adam(params, lr=0.000002, betas=(0.5, 0.999))
+    return torch.optim.Adam(params, lr=0.00002, betas=(0.5, 0.999))
 
 
 def get_disc_optimizer(discriminator):
-    return torch.optim.Adam(discriminator.parameters(), lr=0.00002, betas=(0.5, 0.999))
+    return torch.optim.Adam(discriminator.parameters(), lr=0.0002, betas=(0.5, 0.999))
 
 
 def get_gen_criterion():
@@ -92,10 +92,10 @@ def train_gan(vgg_pth=None, gen_pth=None, disc_pth=None, epoch=0, batch=0):
         image_size = 224,
         patch_size = 8,
         num_classes = 2,
-        dim = 1,
+        dim = 4,
         depth = 2,
         heads = 2,
-        mlp_dim = 1,
+        mlp_dim = 32,
         dropout = 0.5,
         emb_dropout = 0.5,
         pool='mean')

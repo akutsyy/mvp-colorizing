@@ -4,6 +4,7 @@ import time
 from pathlib import Path
 
 import cv2
+import shutil
 import numpy as np
 import torch
 import torchvision
@@ -42,6 +43,41 @@ def convert_videos_to_images(eval_portion=0.05):
                 cv2.imwrite("dataset/UCF101Images_eval/" + str(trimmed_filename) + "_" + str(i) + ".png", tensor)
             else:
                 cv2.imwrite("dataset/UCF101Images_train/" + str(trimmed_filename) + "_" + str(i) + ".png", tensor)
+
+
+def copy_eval_videos():
+    Path("dataset/UCF101Videos_eval").mkdir(parents=True, exist_ok=True)
+    filenames = set(os.listdir("dataset/UCF101Images_eval"))
+
+    def cut_end(filename):  # in format v_ApplyEyeMakeup_g08_c02_0.png
+        s = filename.split("_")
+        endsize = len(s[-1]) + 1
+        return filename[:-endsize]
+
+    def add_avi(filename):
+        return filename + ".avi"
+
+    filenames = map(cut_end, filenames)
+    filenames = set(map(add_avi, filenames))
+
+    for file in filenames:
+        print(file)
+        shutil.copyfile("dataset/UCF101/" + file, "dataset/UCF101Videos_eval/" + file)
+
+
+# Used 0.05 to generate dataset
+def get_video(path):
+    frames, audio, metadata = torchvision.io.read_video(path)
+    video_tensor = torch.ones(len(frames), 3, 224, 224)
+
+    for i, img in enumerate(frames):
+        tensor = torch.permute(torch.Tensor(cv2.cvtColor(img.numpy(), cv2.COLOR_BGR2LAB)), (2, 0, 1)) / 255.0
+        # Random crop
+        if i == 0:
+            a, j, h, w = transforms.RandomCrop.get_params(tensor, output_size=(224, 224))
+        image = transforms.functional.crop(tensor, a, j, h, w)
+        video_tensor[i] = image
+    return video_tensor, audio, metadata
 
 
 # Use the UCF101 dataset, here https://www.crcv.ucf.edu/data/UCF101.php
@@ -104,14 +140,14 @@ def get_loaders():
                                               num_workers=config.num_workers)
     return train_loader, test_loader, len(train_set), len(test_set)
 
+
 def get_datasets():
     train_set = UCF101ImageDataset("dataset/UCF101Images_train")
     test_set = UCF101ImageDataset("dataset/UCF101Images_eval")
     return train_set, test_set
 
+
 def display_dataset_sample():
-
-
     training_data = UCF101ImageDataset("dataset/UCF101Images_train")
     rows = 6
     figure = plt.figure(figsize=(3, 6))
@@ -120,10 +156,10 @@ def display_dataset_sample():
     for i in range(1, 12, 2):
         sample_idx = torch.randint(len(training_data), size=(1,)).item()
         color, bw = training_data[sample_idx]
-        full_image = torch.concat([bw*100, color*255-127], dim=0)
+        full_image = torch.concat([bw * 100, color * 255 - 127], dim=0)
         bw = full_image[0]
         full_color = torch.permute(
-                transforms.ToTensor()(skcolor.lab2rgb(torch.permute(full_image, (1, 2, 0)).numpy())),
+            transforms.ToTensor()(skcolor.lab2rgb(torch.permute(full_image, (1, 2, 0)).numpy())),
             (1, 2, 0))
 
         figure.add_subplot(rows, 2, i)
@@ -134,13 +170,23 @@ def display_dataset_sample():
         plt.imshow(bw, cmap='gray')
     plt.show()
 
-def to_image(bw,color):
-    full_image = torch.concat([bw.to('cpu')*100, color.to('cpu')*255-127], dim=0)
+
+def to_image(bw, color):
+    full_image = torch.concat([bw.to('cpu') * 100, color.to('cpu') * 255 - 127], dim=0)
     full_color = torch.permute(
         transforms.ToTensor()(skcolor.lab2rgb(torch.permute(full_image, (1, 2, 0)).detach().numpy())),
         (1, 2, 0))
     return full_color
 
+
+def batch_to_image(bw, color):
+    full_image = torch.concat([bw.to('cpu') * 100, color.to('cpu') * 255 - 127], dim=1)
+    img_tensor = torch.ones((full_image.shape[0], 224, 224, 3))
+    for i in range(full_image.shape[0]):
+        img_tensor[i] = torch.permute(
+            transforms.ToTensor()(skcolor.lab2rgb(torch.permute(full_image[i], (1, 2, 0)).detach().numpy())),
+            (1, 2, 0))
+    return img_tensor
 
 
 if __name__ == '__main__':
@@ -151,4 +197,4 @@ if __name__ == '__main__':
     start = time.time()
     for i, x in enumerate(train_loader):
         print(str(i) + ",   " + str((time.time() - start) / (i + 1)) + " seconds per batch")
-        color,bw = x
+        color, bw = x

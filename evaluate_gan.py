@@ -4,7 +4,9 @@ import numpy as np
 import torch
 import torch.nn.functional as functional
 import sys
+import av
 
+import torchvision
 from matplotlib import pyplot as plt
 
 import config
@@ -35,10 +37,41 @@ def demo_model_images(e,b,num=10):
 
         processed_ab = torch.squeeze(predicted_ab[0].detach(), dim=0)
         processed_image = dataset.to_image(
-            grey, processed_ab)
-        plt.imsave("demo_output/img_" + str(i) + ".png", processed_image.numpy())
+            torch.squeeze(grey,dim=0), processed_ab)
+        plt.imsave("demo_output/image_" + str(i) + ".png", processed_image.numpy())
 
+def re_color_video(path,vgg_bottom,unflatten,generator,device):
+    video_tensor, audio, metadata = dataset.get_video(path)
+    # Pad to batch size
+    video_len = config.batch_size-(video_tensor.shape[0] % config.batch_size) + video_tensor.shape[0]
+    video_tensor = torch.cat([video_tensor,torch.ones((video_len-video_tensor.shape[0],3,224,224))],dim=0)
+    video = torch.ones((video_len,224,224,3))
+    for i in range(video_len//config.batch_size):
+        frames = video_tensor[i*config.batch_size:(i+1)*config.batch_size]
+        grey = frames[:,0].unsqueeze(1).to(device)
+        grey_3 = grey.repeat(1, 3, 1, 1).to(device)
+        vgg_bottom_out_flat = vgg_bottom(grey_3)
+        # To undo the flatten operation in vgg_bottom
+        vgg_bottom_out = unflatten(vgg_bottom_out_flat)
+        predicted_ab, _ = generator(vgg_bottom_out)
 
+        processed_ab = torch.squeeze(predicted_ab.detach(), dim=0)
+        processed_image = dataset.batch_to_image(grey, processed_ab)
+
+        video[i*config.batch_size:(i+1)*config.batch_size] = processed_image*255
+    return video[:video_tensor.shape[0]],metadata
+
+def demo_model_videos(e,b,num=10,dir = "dataset/UCF101Videos_eval",outdir='demo_output'):
+    vgg_bottom, unflatten, generator, device = get_models(e,b)
+    filenames = os.listdir(dir)
+    for i in range(num):
+        sample_idx = torch.randint(len(filenames), size=(1,)).item()
+        print(filenames[sample_idx])
+        path = os.path.join(dir,filenames[sample_idx])
+        video,metadata = re_color_video(path, vgg_bottom, unflatten, generator, device)
+        outpath = os.path.join(outdir,filenames[sample_idx])
+        torchvision.io.write_video(filename=outpath,video_array=video,
+                                   fps=metadata['video_fps'],video_codec='libx264')
 def get_models(e, b):
     # Get cpu or gpu device for training.
     device = "cuda" if config.use_gpu and torch.cuda.is_available() else "cpu"
@@ -50,87 +83,11 @@ def get_models(e, b):
     generator = network.Colorization_Model().to(device)
 
     vgg_bottom.load_state_dict(torch.load(
-        "models/vgg_bottom_e"+str(e)+"_b"+str(b)+".pth"))
+        "models/vgg_bottom_e"+str(e)+"_b"+str(b)+".pth",map_location=device))
     generator.load_state_dict(torch.load(
-        "models/generator_e"+str(e)+"_b"+str(b)+".pth"))
+        "models/generator_e"+str(e)+"_b"+str(b)+".pth",map_location=device))
 
     return vgg_bottom,unflatten,generator,device
-
-    num_batches = int(len(train_loader) / config.batch_size)
-    # torch.autograd.set_detect_anomaly(True)
-    with open('logging.txt', 'w') as log, open('errors.txt', 'w') as err:
-        sys.stdout = log
-        #sys.stderr = err
-        print("New Training Sequence:")
-        for epoch in range(e, config.num_epochs):
-            #print("Training epoch " + str(epoch))
-            running_gen_loss = 0.0
-            running_disc_loss = 0.0
-            for i, data in enumerate(train_loader, 0):
-                if i<b:
-                    continue
-                # Print progress
-                log.flush()
-                print("Epoch "+str(epoch)+" Batch " + str(i))
-
-                # ab channels of l*a*b color space - is color
-                ab, grey = data
-                ab, grey = ab.to(device), grey.to(device)
-                # Images are in l*a*b* space, normalized
-
-                # Use pre-trained VGG as in original paper
-                grey_3 = grey.repeat(1, 3, 1, 1).to(device)
-                vgg_bottom_out_flat = vgg_bottom(grey_3)
-                # To undo the flatten operation in vgg_bottom
-                vgg_bottom_out = unflatten(vgg_bottom_out_flat)
-                vgg_out = vgg_top(vgg_bottom_out)
-                predicted_ab, predicted_classes = generator(vgg_bottom_out)
-                random_average_ab = nn_utils.random_weighted_average(
-                    predicted_ab, ab, device=device)
-
-                discrim_from_real = discriminator(
-                    torch.concat([grey, ab], dim=1))
-                discrim_from_predicted = discriminator(
-                    torch.concat([grey, predicted_ab], dim=1))
-
-                # Train generator
-                gen_loss = gen_criterion(predicted_ab, predicted_classes,discrim_from_real, discrim_from_predicted,
-                                         ab, vgg_out)
-                gen_optimizer.zero_grad()
-                gen_loss.backward(retain_graph=True)
-                running_gen_loss = running_gen_loss + gen_loss.detach().item()
-
-                # Train discriminator
-                disc_loss = disc_criterion(discrim_from_real, discrim_from_predicted, torch.concat([grey, ab], dim=1),
-                                           torch.concat([grey, predicted_ab], dim=1), discriminator)
-                disc_optimizer.zero_grad()
-                disc_loss.backward()
-                running_disc_loss = running_disc_loss + disc_loss.detach().item()
-
-                gen_optimizer.step()
-                disc_optimizer.step()
-                print("Generator loss: "+str(gen_loss.item()))
-                print("Discriminator loss: "+str(disc_loss.item()))
-
-                # Save a demo image after every 50 batches
-                if i % 50 == 0:
-                    # Reshape dimensions to be as expected
-                    processed_ab = torch.squeeze(predicted_ab[0], dim=0)
-                    processed_image = dataset.to_image(
-                        data[1][0], processed_ab)
-                    plt.imsave("test_output/e" + str(epoch) + "b" +
-                               str(i) + ".png", processed_image.numpy())
-
-                # Save the models every 200 batches
-                if i % 200 == 199:
-                    torch.save(vgg_bottom.state_dict(),
-                               save_models_path + "/vgg_bottom_e" + str(epoch) + "_b" + str(i) + ".pth")
-                    torch.save(generator.state_dict(),
-                               save_models_path + "/generator_e" + str(epoch) + "_b" + str(i) + ".pth")
-                    torch.save(discriminator.state_dict(),
-                               save_models_path + "/discriminator_e" + str(epoch) + "_b" + str(i) + ".pth")
-
-            b = 0
 
 
 if __name__ == '__main__':
@@ -138,6 +95,6 @@ if __name__ == '__main__':
     if len(args) == 2:
         epoch = int(args[0])
         batch = int(args[1])
-        eval_gan(e=epoch, b=batch)
+        demo_model_videos(e=epoch, b=batch)
     else:
         print("Requires arguments: <epoch> <batch>")

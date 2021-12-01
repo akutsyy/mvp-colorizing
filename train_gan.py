@@ -20,7 +20,7 @@ def get_gen_optimizer(vgg_bottom, gen):
 
 
 def get_disc_optimizer(discriminator):
-    return torch.optim.Adam(discriminator.parameters(), lr=0.002, betas=(0.9, 0.999))
+    return torch.optim.Adam(discriminator.parameters(), lr=0.00002, betas=(0.5, 0.999))
 
 
 def get_gen_criterion():

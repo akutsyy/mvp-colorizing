@@ -42,6 +42,8 @@ def demo_model_images(e,b,num=10):
 
 def re_color_video(path,vgg_bottom,unflatten,generator,device):
     video_tensor, audio, metadata = dataset.get_video(path)
+    original_len = video_tensor.shape[0]
+
     # Pad to batch size
     video_len = config.batch_size-(video_tensor.shape[0] % config.batch_size) + video_tensor.shape[0]
     video_tensor = torch.cat([video_tensor,torch.ones((video_len-video_tensor.shape[0],3,224,224))],dim=0)
@@ -59,7 +61,7 @@ def re_color_video(path,vgg_bottom,unflatten,generator,device):
         processed_image = dataset.batch_to_image(grey, processed_ab)
 
         video[i*config.batch_size:(i+1)*config.batch_size] = processed_image*255
-    return video[:video_tensor.shape[0]],metadata
+    return video[:original_len],metadata
 
 def demo_model_videos(e,b,num=10,dir = "dataset/UCF101Videos_eval",outdir='demo_output'):
     vgg_bottom, unflatten, generator, device = get_models(e,b)
@@ -95,6 +97,6 @@ if __name__ == '__main__':
     if len(args) == 2:
         epoch = int(args[0])
         batch = int(args[1])
-        demo_model_videos(e=epoch, b=batch)
+        demo_model_images(e=epoch, b=batch,num=100)
     else:
         print("Requires arguments: <epoch> <batch>")

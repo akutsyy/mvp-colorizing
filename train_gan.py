@@ -26,17 +26,17 @@ def get_disc_optimizer(discriminator):
 def get_gen_criterion():
     kld = torch.nn.KLDivLoss(reduction='batchmean')
 
-    def loss_function(ab, classes, discrim, true_ab, true_labels):
+    def loss_function(ab, classes, discrim_real, discrim_pred, true_ab, true_labels):
         mse_loss = nn_utils.mse(ab, true_ab)
         kld_loss = kld(torch.log(classes),
                        functional.softmax(true_labels, dim=1))
-        wasser_loss = nn_utils.wasserstein_loss(discrim)
+        wasser_loss = nn_utils.wasserstein_loss(discrim_real) - nn_utils.wasserstein_loss(discrim_pred)
         print("mse: " + str(mse_loss.item()))
         print("kld: " + str(kld_loss.item()))
         print("wasser: " + str(wasser_loss.item()))
         loss = 1 * mse_loss \
             + 0.003 * kld_loss \
-            + 0.1 * wasser_loss
+            + wasser_loss
         return loss
 
     return loss_function
@@ -145,7 +145,7 @@ def train_gan(e=None, b=None):
                     torch.concat([grey, predicted_ab], dim=1))
 
                 # Train generator
-                gen_loss = gen_criterion(predicted_ab, predicted_classes, discrim_from_predicted,
+                gen_loss = gen_criterion(predicted_ab, predicted_classes,discrim_from_real, discrim_from_predicted,
                                          ab, vgg_out)
                 gen_optimizer.zero_grad()
                 gen_loss.backward(retain_graph=True)

@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 import os
 import random
 import time
@@ -131,7 +130,9 @@ def display_dataset_sample():
         plt.imshow(bw, cmap='gray')
     plt.show()
 
-def to_image(bw,color):
+def to_image(bw,color,device='cpu'):
+    bw = bw.to(device)
+    color = color.to(device)
     full_image = torch.concat([bw*100, color*255-127], dim=0)
     full_image = full_image.to("cpu")
     full_color = torch.permute(

@@ -77,7 +77,7 @@ class Transformer(nn.Module):
         return x
 
 class ViT(nn.Module):
-    def __init__(self, *, image_size, patch_size, num_classes, dim, depth, heads, mlp_dim, pool = 'cls', channels = 3, dim_head = 64, dropout = 0., emb_dropout = 0.):
+    def __init__(self, *, image_size, patch_size, num_classes, dim, depth, heads, mlp_dim, pool = 'cls', channels = 3, dim_head = 64, dropout = 0., emb_dropout = 0., device="cpu"):
         super().__init__()
         image_height, image_width = pair(image_size)
         patch_height, patch_width = pair(patch_size)
@@ -100,8 +100,10 @@ class ViT(nn.Module):
         self.transformer = Transformer(dim, depth, heads, dim_head, mlp_dim, dropout)
 
         self.pool = pool
+        self.device = device
 
     def forward(self, img):
+        img.to(self.device)
         x = self.to_patch_embedding(img)
         b, n, _ = x.shape
 

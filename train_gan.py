@@ -21,7 +21,7 @@ def get_gen_optimizer(vgg_bottom, gen):
 
 
 def get_disc_optimizer(discriminator):
-    return torch.optim.Adam(discriminator.parameters(), lr=0.002, betas=(0.9, 0.999))
+    return torch.optim.Adam(discriminator.parameters(), lr=0.00002, betas=(0.9, 0.999))
 
 
 def get_gen_criterion():
@@ -95,22 +95,23 @@ def train_gan(e=None, b=None):
         num_classes = 2,
         dim = 4,
         depth = 1,
-        heads = 2,
-        mlp_dim = 32,
-        dropout = 0.5,
-        emb_dropout = 0.5,
-        pool='mean')
+        heads = 4,
+        mlp_dim = 8,
+        dropout = 0.1,
+        emb_dropout = 0.1,
+        pool='mean',
+        device=device).to(device)
     generator = network.Colorization_Model().to(device)
 
     if e is not None and b is not None:
         e = int(e)
         b = int(b)
         vgg_bottom.load_state_dict(torch.load(
-            "models/vgg_bottom_e"+str(e)+"_b"+str(b)+".pth"))
+            save_models_path+"models/vgg_bottom_e"+str(e)+"_b"+str(b)+".pth"))
         discriminator.load_state_dict(torch.load(
-            "models/discriminator_e"+str(e)+"_b"+str(b)+".pth"))
+            save_models_path+"models/discriminator_e"+str(e)+"_b"+str(b)+".pth"))
         generator.load_state_dict(torch.load(
-            "models/generator_e"+str(e)+"_b"+str(b)+".pth"))
+            save_models_path+"models/generator_e"+str(e)+"_b"+str(b)+".pth"))
     else:
         e = 0
         b = 0
@@ -179,7 +180,7 @@ def train_gan(e=None, b=None):
                     processed_ab = torch.squeeze(predicted_ab[0], dim=0)
                     processed_image = dataset.to_image(
                         data[1][0], processed_ab)
-                    plt.imsave("test_output/e" + str(epoch) + "b" +
+                    plt.imsave("/home/jlf60/mvp-colorizing/test_output/e" + str(epoch) + "b" +
                                str(i) + ".png", processed_image.numpy())
 
                 # Save the models every 200 batches

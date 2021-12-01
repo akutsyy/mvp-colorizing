@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import os
 import random
 import time
@@ -90,7 +91,7 @@ class UCF101ImageDataset(Dataset):
         return sample
 
 
-def get_datasets():
+def get_loaders():
     train_set = UCF101ImageDataset("/home/jlf60/mvp-colorizing/dataset/UCF101Images_train")
     test_set = UCF101ImageDataset("/home/jlf60/mvp-colorizing/dataset/UCF101Images_train")
     train_loader = torch.utils.data.DataLoader(train_set,
@@ -143,7 +144,7 @@ def to_image(bw,color):
 if __name__ == '__main__':
     display_dataset_sample()
     print("Loading")
-    train_loader, test_loader, train_len, test_len = get_datasets()
+    train_loader, test_loader, train_len, test_len = get_loaders()
     print("Loaded")
     start = time.time()
     for i, x in enumerate(train_loader):

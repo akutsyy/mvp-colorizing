@@ -68,7 +68,7 @@ def generate_from_bw(device, vgg_bottom, unflatten, generator, grey):
     return predicted_ab
 
 
-def train_gan():
+def train_gan(epoch=None,batch=None):
     # Get cpu or gpu device for training.
     device = "cuda" if config.use_gpu and torch.cuda.is_available() else "cpu"
     print(device)
@@ -80,12 +80,19 @@ def train_gan():
     if not os.path.exists(save_models_path):
         os.makedirs(save_models_path)
 
+
     # Load models
     vgg_bottom, unflatten = partial_vgg.get_partial_vgg()
     vgg_bottom, unflatten = vgg_bottom.to(device), unflatten.to(device)
     vgg_top = partial_vgg.get_vgg_top().to(device)  # Yes it's strange that the bottom gets trained but the top doesn't
     discriminator = network.Discriminator().to(device)
     generator = network.Colorization_Model().to(device)
+
+    
+    if epoch is not None and batch is not None:
+        vgg_bottom.load_state_dict(torch.load("models/vgg_bottom_e"+str(epoch)+"_b"+str(batch)+".pth"))
+        discriminator.load_state_dict(torch.load("models/discriminator_e"+str(epoch)+"_b"+str(batch)+".pth"))
+        generator.load_state_dict(torch.load("models/generator_e"+str(epoch)+"_b"+str(batch)+".pth"))
 
     gen_optimizer = get_gen_optimizer(vgg_bottom, generator)
     disc_optimizer = get_disc_optimizer(discriminator)
@@ -94,8 +101,9 @@ def train_gan():
 
     num_batches = int(len(train_loader) / config.batch_size)
     # torch.autograd.set_detect_anomaly(True)
-    with open('logging.txt', 'w') as log:
+    with open('logging.txt', 'w') as log, open('errors.txt','w') as err:
         sys.stdout = log
+        sys.stderr = err
         print("New Training Sequence:")
         for epoch in range(config.num_epochs):
             #print("Training epoch " + str(epoch))
@@ -161,4 +169,10 @@ def train_gan():
 
 
 if __name__ == '__main__':
-    train_gan()
+    args = sys.argv[1:]
+    if len(sys.argv) == 2:
+        epoch = args[0]
+        batch = args[1]
+        train_gan(epoch=epoch,batch=batch)
+    else:
+        train_gan()

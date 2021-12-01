@@ -42,13 +42,10 @@ def demo_model_images(e,b,num=10):
 
 def re_color_video(path,vgg_bottom,unflatten,generator,device):
     video_tensor, audio, metadata = dataset.get_video(path)
-    original_len = video_tensor.shape[0]
 
-    # Pad to batch size
-    video_len = config.batch_size-(video_tensor.shape[0] % config.batch_size) + video_tensor.shape[0]
-    video_tensor = torch.cat([video_tensor,torch.ones((video_len-video_tensor.shape[0],3,224,224))],dim=0)
-    video = torch.ones((video_len,224,224,3))
-    for i in range(video_len//config.batch_size):
+    video = torch.ones(video_tensor.shape[0],224,224,3)
+    fcount = video.shape[0]
+    for i in range(fcount//config.batch_size+(1 if fcount % config.batch_size > 0 else 0)):
         frames = video_tensor[i*config.batch_size:(i+1)*config.batch_size]
         grey = frames[:,0].unsqueeze(1).to(device)
         grey_3 = grey.repeat(1, 3, 1, 1).to(device)
@@ -57,11 +54,10 @@ def re_color_video(path,vgg_bottom,unflatten,generator,device):
         vgg_bottom_out = unflatten(vgg_bottom_out_flat)
         predicted_ab, _ = generator(vgg_bottom_out)
 
-        processed_ab = torch.squeeze(predicted_ab.detach(), dim=0)
-        processed_image = dataset.batch_to_image(grey, processed_ab)
+        processed_image = dataset.batch_to_image(grey, predicted_ab)
 
         video[i*config.batch_size:(i+1)*config.batch_size] = processed_image*255
-    return video[:original_len],metadata
+    return video,metadata
 
 def demo_model_videos(e,b,num=10,dir = "dataset/UCF101Videos_eval",outdir='demo_output'):
     vgg_bottom, unflatten, generator, device = get_models(e,b)
@@ -73,7 +69,7 @@ def demo_model_videos(e,b,num=10,dir = "dataset/UCF101Videos_eval",outdir='demo_
         video,metadata = re_color_video(path, vgg_bottom, unflatten, generator, device)
         outpath = os.path.join(outdir,filenames[sample_idx])
         torchvision.io.write_video(filename=outpath,video_array=video,
-                                   fps=metadata['video_fps'],video_codec='libx264')
+                                   fps=metadata['video_fps'],video_codec='h264')
 def get_models(e, b):
     # Get cpu or gpu device for training.
     device = "cuda" if config.use_gpu and torch.cuda.is_available() else "cpu"
@@ -97,6 +93,6 @@ if __name__ == '__main__':
     if len(args) == 2:
         epoch = int(args[0])
         batch = int(args[1])
-        demo_model_images(e=epoch, b=batch,num=100)
+        demo_model_videos(e=epoch, b=batch,num=10)
     else:
         print("Requires arguments: <epoch> <batch>")

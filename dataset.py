@@ -71,7 +71,7 @@ def get_video(path):
     video_tensor = torch.ones(len(frames), 3, 224, 224)
 
     for i, img in enumerate(frames):
-        tensor = torch.permute(torch.Tensor(cv2.cvtColor(img.numpy(), cv2.COLOR_BGR2LAB)), (2, 0, 1)) / 255.0
+        tensor = torch.permute(torch.Tensor(cv2.cvtColor(img.numpy(), cv2.COLOR_RGB2LAB)), (2, 0, 1)) / 255.0
         # Random crop
         if i == 0:
             a, j, h, w = transforms.RandomCrop.get_params(tensor, output_size=(224, 224))

@@ -1,4 +1,4 @@
-batch_size = 128
+batch_size = 64
 epochs = 5
 num_workers = 4
 learning_rate = 0.01

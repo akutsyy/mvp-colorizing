@@ -20,7 +20,7 @@ def get_gen_optimizer(vgg_bottom, gen):
 
 
 def get_disc_optimizer(discriminator):
-    return torch.optim.Adam(discriminator.parameters(), lr=0.00002, betas=(0.5, 0.999))
+    return torch.optim.Adam(discriminator.parameters(), lr=0.002, betas=(0.9, 0.999))
 
 
 def get_gen_criterion():
@@ -35,7 +35,7 @@ def get_gen_criterion():
         print("wasser: " + str(wasser_loss.item()))
         loss = 1 * mse_loss \
                + 0.003 * kld_loss \
-               - 0.1 * wasser_loss
+               + 0.1 * wasser_loss
         return loss
 
     return loss_function
@@ -43,7 +43,7 @@ def get_gen_criterion():
 
 def get_disc_criterion(device='cpu'):
     def loss_function(real, pred, real_sample, pred_sample, discriminator,
-                      gradient_penalty_weight=10):
+                      gradient_penalty_weight=1):
         real_loss = nn_utils.wasserstein_loss(real)
         pred_loss = nn_utils.wasserstein_loss(pred)
         gp_loss = nn_utils.compute_gradient_penalty(discriminator, real_sample, pred_sample, device=device) * gradient_penalty_weight
@@ -52,8 +52,8 @@ def get_disc_criterion(device='cpu'):
         print("real: " + str(real_loss.item()))
         print("pred: " + str(pred_loss.item()))
         print("grad: " + str(gp_loss.item()))
-        return -1 * real_loss + \
-               1 * pred_loss + \
+        return 1 * real_loss + \
+               -1 * pred_loss + \
                1 * gp_loss
 
     return loss_function
@@ -143,15 +143,15 @@ def train_gan():
                 print("Generator loss: "+str(gen_loss.item()))
                 print("Discriminator loss: "+str(disc_loss.item()))
 
-                # Save a demo image after every 10 batches
-                if i % 10 == 0:
+                # Save a demo image after every 50 batches
+                if i % 50 == 0:
                     # Reshape dimensions to be as expected
                     processed_ab = torch.squeeze(predicted_ab[0], dim=0)
                     processed_image = dataset.to_image(data[1][0], processed_ab)
                     plt.imsave("test_output/e" + str(epoch) + "b" + str(i) + ".png", processed_image.numpy())
 
-                # Save the models every 100 batches
-                if i % 50 == 49:
+                # Save the models every 200 batches
+                if i % 200 == 199:
                     torch.save(vgg_bottom.state_dict(),
                                save_models_path + "/vgg_bottom_e" + str(epoch) + "_b" + str(i) + ".pth")
                     torch.save(generator.state_dict(),

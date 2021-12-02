@@ -70,11 +70,16 @@ def re_color_video(video_tensor, vgg_bottom, unflatten, generator, device,with_b
     return video
 
 
-def demo_model_videos(e, b, num=10, dir="dataset/UCF101Videos_eval", outdir='demo_output'):
+def demo_model_videos(e, b, num=10, dir="dataset/UCF101Videos_eval", outdir='demo_output',all_videos=False):
     vgg_bottom, unflatten, generator, device = get_models(e, b)
     filenames = os.listdir(dir)
+    if all_videos:
+        num = len(filenames)
     for i in range(num):
-        sample_idx = torch.randint(len(filenames), size=(1,)).item()
+        if all_videos:
+            sample_idx = i
+        else:
+            sample_idx = torch.randint(len(filenames), size=(1,)).item()
         print(filenames[sample_idx])
         path = os.path.join(dir, filenames[sample_idx])
         video_tensor, audio, metadata = dataset.get_video(path)

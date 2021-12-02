@@ -17,20 +17,20 @@ import config
 
 
 # Used 0.05 to generate dataset
-def convert_videos_to_images(eval_portion=0.05):
-    Path("/home/jlf60/mvp-colorizing/dataset/UCF101Images_train").mkdir(parents=True, exist_ok=True)
-    Path("/home/jlf60/mvp-colorizing/dataset/UCF101Images_eval").mkdir(parents=True, exist_ok=True)
-    total = len(os.listdir("/home/jlf60/mvp-colorizing/dataset/UCF101"))
-    for i, filename in enumerate(os.listdir("/home/jlf60/mvp-colorizing/dataset/UCF101")):
+def convert_videos_to_images(eval_portion=0.05,dataset_root="dataset"):
+    Path(dataset_root+"/UCF101Images_train").mkdir(parents=True, exist_ok=True)
+    Path(dataset_root+"/UCF101Images_eval").mkdir(parents=True, exist_ok=True)
+    total = len(os.listdir(dataset_root+"/UCF101"))
+    for i, filename in enumerate(os.listdir(dataset_root+"/UCF101")):
         trimmed_filename = filename[:-4]
         print(str(100 * i / total) + "%,  " + filename)
         # Skip if already processed this video
         if not filename.endswith(".avi") or \
-                os.path.isfile("/home/jlf60/mvp-colorizing/dataset/UCF101Images_train/" + str(trimmed_filename) + "_0.png") \
-                or os.path.isfile("/home/jlf60/mvp-colorizing/dataset/UCF101Images_eval/" + str(trimmed_filename) + "_0.png"):
+                os.path.isfile(dataset_root+"/UCF101Images_train/" + str(trimmed_filename) + "_0.png") \
+                or os.path.isfile(dataset_root+"/UCF101Images_eval/" + str(trimmed_filename) + "_0.png"):
             continue
 
-        frames, audio, metadata = torchvision.io.read_video("/home/jlf60/mvp-colorizing/dataset/UCF101/" + filename)
+        frames, audio, metadata = torchvision.io.read_video(dataset_root+"/UCF101/" + filename)
         # Place entire videos either as eval or train, to avoid over-fitting
         do_eval = random.random() < eval_portion
         # Reduce training set to 2 fps to save space/time
@@ -40,14 +40,14 @@ def convert_videos_to_images(eval_portion=0.05):
         for i, img in enumerate(frames):
             tensor = cv2.cvtColor(img.cpu().numpy(), cv2.COLOR_BGR2RGB)
             if do_eval:
-                cv2.imwrite("/home/jlf60/mvp-colorizing/dataset/UCF101Images_eval/" + str(trimmed_filename) + "_" + str(i) + ".png", tensor)
+                cv2.imwrite(dataset_root+"/UCF101Images_eval/" + str(trimmed_filename) + "_" + str(i) + ".png", tensor)
             else:
-                cv2.imwrite("/home/jlf60/mvp-colorizing/dataset/UCF101Images_train/" + str(trimmed_filename) + "_" + str(i) + ".png", tensor)
+                cv2.imwrite(dataset_root+"/UCF101Images_train/" + str(trimmed_filename) + "_" + str(i) + ".png", tensor)
 
 
-def copy_eval_videos():
-    Path("dataset/UCF101Videos_eval").mkdir(parents=True, exist_ok=True)
-    filenames = set(os.listdir("dataset/UCF101Images_eval"))
+def copy_eval_videos(dataset_root="dataset"):
+    Path(dataset_root+"/UCF101Videos_eval").mkdir(parents=True, exist_ok=True)
+    filenames = set(os.listdir(dataset_root+"/UCF101Images_eval"))
 
     def cut_end(filename):  # in format v_ApplyEyeMakeup_g08_c02_0.png
         s = filename.split("_")
@@ -62,7 +62,7 @@ def copy_eval_videos():
 
     for file in filenames:
         print(file)
-        shutil.copyfile("dataset/UCF101/" + file, "dataset/UCF101Videos_eval/" + file)
+        shutil.copyfile(dataset_root+"/UCF101/" + file, dataset_root+"/UCF101Videos_eval/" + file)
 
 
 # Used 0.05 to generate dataset
@@ -127,9 +127,9 @@ class UCF101ImageDataset(Dataset):
         return sample
 
 
-def get_loaders():
-    train_set = UCF101ImageDataset("/home/jlf60/mvp-colorizing/dataset/UCF101Images_train")
-    test_set = UCF101ImageDataset("/home/jlf60/mvp-colorizing/dataset/UCF101Images_train")
+def get_loaders(dataset_root="dataset"):
+    train_set = UCF101ImageDataset(dataset_root+"/UCF101Images_train")
+    test_set = UCF101ImageDataset(dataset_root+"dataset/UCF101Images_train")
     train_loader = torch.utils.data.DataLoader(train_set,
                                                batch_size=config.batch_size,
                                                shuffle=True,
@@ -146,8 +146,8 @@ def get_datasets():
     test_set = UCF101ImageDataset("dataset/UCF101Images_eval")
     return train_set, test_set
 
-def display_dataset_sample():
-    training_data = UCF101ImageDataset("/home/jlf60/mvp-colorizing/dataset/UCF101Images_train")
+def display_dataset_sample(dataset_root="dataset"):
+    training_data = UCF101ImageDataset(dataset_root+"/UCF101Images_train")
     rows = 6
     figure = plt.figure(figsize=(3, 6))
     figure.set_tight_layout(True)

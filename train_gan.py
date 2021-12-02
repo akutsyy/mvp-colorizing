@@ -35,7 +35,7 @@ def get_gen_criterion():
         print("mse: " + str(mse_loss.item()))
         print("kld: " + str(kld_loss.item()))
         print("wasser: " + str(wasser_loss.item()))
-        loss = 3 * mse_loss \
+        loss = mse_loss \
             + 0.003 * kld_loss \
             + wasser_loss
         return loss
@@ -173,7 +173,7 @@ def train_gan(e=None, b=None):
                 print("Discriminator loss: "+str(disc_loss.item()))
 
                 # Save a demo image after every 50 batches
-                if i % 1 == 0:
+                if i % 50 == 0:
                     # Reshape dimensions to be as expected
                     processed_ab = torch.squeeze(predicted_ab[0], dim=0)
                     processed_image = dataset.to_image(
@@ -181,8 +181,8 @@ def train_gan(e=None, b=None):
                     plt.imsave("/home/jlf60/mvp-colorizing/test_output/e" + str(epoch) + "b" +
                                str(i) + ".png", processed_image.numpy())
 
-                # Save the models every 200 batches
-                if i % 500 == 199:
+                # Save the models every 500 batches
+                if i % 500 == 499:
                     torch.save(vgg_bottom.state_dict(),
                                save_models_path + "/vgg_bottom_e" + str(epoch) + "_b" + str(i) + ".pth")
                     torch.save(generator.state_dict(),

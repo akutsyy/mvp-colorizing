@@ -1,8 +1,8 @@
-batch_size = 32
+batch_size = 64
 epochs = 5
 num_workers = 1
 learning_rate = 0.01
-model_dir = "/home/jlf60/mvp-colorizing/models/"
+model_dir = "models"
 num_epochs = 5
 use_gpu = True
 

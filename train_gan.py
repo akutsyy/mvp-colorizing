@@ -88,18 +88,18 @@ def train_gan(e=None, b=None):
     vgg_bottom, unflatten = vgg_bottom.to(device), unflatten.to(device)
     # Yes it's strange that the bottom gets trained but the top doesn't
     vgg_top = partial_vgg.get_vgg_top().to(device)
-    #discriminator = network.Discriminator()
-    discriminator = vit.ViT(
-        image_size = 224,
-        patch_size = 8,
-        num_classes = 2,
-        dim = 16,
-        depth = 2,
-        heads = 2,
-        mlp_dim = 32,
-        dropout = 0.1,
-        emb_dropout = 0.1,
-        pool='mean').to(device)
+    discriminator = network.Discriminator().to(device)
+    #discriminator = vit.ViT(
+    #    image_size = 224,
+    #    patch_size = 8,
+    #    num_classes = 2,
+    #    dim = 16,
+    #    depth = 2,
+    #    heads = 2,
+    #    mlp_dim = 32,
+    #    dropout = 0.1,
+    #    emb_dropout = 0.1,
+    #    pool='mean').to(device)
     generator = network.Colorization_Model().to(device)
 
     if e is not None and b is not None:
@@ -125,7 +125,7 @@ def train_gan(e=None, b=None):
         sys.stdout = log
         print("New Training Sequence:")
         for epoch in range(e, config.num_epochs):
-            #print("Training epoch " + str(epoch))
+            print("Training epoch " + str(epoch))
             running_gen_loss = 0.0
             running_disc_loss = 0.0
             for i, data in enumerate(train_loader, 0):

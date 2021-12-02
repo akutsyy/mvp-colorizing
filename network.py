@@ -110,7 +110,6 @@ class Colorization_Model(nn.Module):
         globalFeatures = self.global_features(x)
 
         globalFeatures2 = self.global_features2(globalFeatures)
-        # TODO: Check that this is correct (tensorflow and pytorch have channels in different dimensions)
         globalFeatures2 = globalFeatures2.unsqueeze(1).repeat(1, 28 * 28, 1)
         globalFeatures2 = torch.reshape(globalFeatures2, (batch_size, 28, 28, 256))
         globalFeatures2 = torch.permute(globalFeatures2, (0, 3, 1, 2))

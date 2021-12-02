@@ -14,15 +14,20 @@ import network
 import partial_vgg
 
 
-def demo_model_images(e, b, num=10):
+def demo_model_images(e, b, num=10,trainset=False):
     vgg_bottom, unflatten, generator, device = get_models(e, b)
     print("Loading data...")
-    _, test_set = dataset.get_datasets()
+    train_set, test_set = dataset.get_datasets()
+    if trainset:
+        set = train_set
+    else:
+        set = test_set
     print("Loaded")
 
     for i in range(num):
-        sample_idx = torch.randint(len(test_set), size=(1,)).item()
-        real_ab, grey = test_set[sample_idx]
+        sample_idx = torch.randint(len(set), size=(1,)).item()
+        data = set[sample_idx]
+        real_ab, grey = data
         grey = grey.unsqueeze(0).to(device)
 
         grey_3 = grey.repeat(1, 3, 1, 1).to(device)
@@ -33,12 +38,12 @@ def demo_model_images(e, b, num=10):
 
         processed_ab = torch.squeeze(predicted_ab[0].detach(), dim=0)
         processed_image = dataset.to_image(
-            torch.squeeze(grey, dim=0), processed_ab)
+            data[1], processed_ab)
         plt.imsave("demo_output/image_" + str(i) + ".png", processed_image.numpy())
 
         overlay = dataset.to_image(
             torch.ones((1, 224, 224)) * 0.75, processed_ab)
-        plt.imsave("demo_output/image_" + str(i) + "_overlay.png", overlay.numpy())
+        #plt.imsave("demo_output/image_" + str(i) + "_overlay.png", overlay.numpy())
 
 
 def re_color_video(video_tensor, vgg_bottom, unflatten, generator, device):
@@ -148,7 +153,8 @@ if __name__ == '__main__':
     if len(args) == 2:
         epoch = int(args[0])
         batch = int(args[1])
-        demo_model_videos(e=epoch, b=batch)
+        demo_model_images(e=epoch,b=batch,num=50,trainset=True)
+        #demo_model_videos(e=epoch, b=batch)
         # spacial, temporal = benchmark(e=epoch, b=batch,dir="dataset/UCF101Videos_eval_test")
         # print(spacial)
         # print(temporal)

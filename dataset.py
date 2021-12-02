@@ -157,7 +157,7 @@ def display_dataset_sample():
     for i in range(1, 12, 2):
         sample_idx = torch.randint(len(training_data), size=(1,)).item()
         color, bw = training_data[sample_idx]
-        full_image = torch.concat([bw * 100, color * 200 - 100], dim=0)
+        full_image = torch.concat([bw * 100, color * 255 - 127], dim=0)
         bw = full_image[0]
         full_color = torch.permute(
             transforms.ToTensor()(skcolor.lab2rgb(torch.permute(full_image, (1, 2, 0)).numpy())),
@@ -175,7 +175,7 @@ def display_dataset_sample():
 def to_image(bw, color):
     bw = torch.clip(bw, min=0, max=1)
     color = torch.clip(color, min=0, max=1)
-    full_image = torch.concat([bw.to('cpu') * 100, color.to('cpu') * 200 - 100], dim=0)
+    full_image = torch.concat([bw.to('cpu') * 100, color.to('cpu') * 255 - 127], dim=0)
     full_color = torch.permute(
         transforms.ToTensor()(skcolor.lab2rgb(torch.permute(full_image, (1, 2, 0)).detach().numpy())),
         (1, 2, 0))
@@ -188,7 +188,7 @@ def lab_video_to_rgb(lab_tensor):
     bw = torch.clip(lab_tensor[:, 0].unsqueeze(1), min=0, max=1)
     color = torch.clip(lab_tensor[:, 1:], min=0, max=1)
 
-    full_image = torch.concat([bw.to('cpu') * 100, color.to('cpu')*200-100], dim=1)
+    full_image = torch.concat([bw.to('cpu') * 100, color.to('cpu')*255-127], dim=1)
 
     img_tensor = torch.ones((full_image.shape[0], 224, 224, 3))
     for i in range(full_image.shape[0]):

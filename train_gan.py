@@ -12,6 +12,7 @@ import dataset
 import network
 import nn_utils
 import partial_vgg
+import vit
 
 
 def get_gen_optimizer(vgg_bottom, gen):
@@ -34,7 +35,7 @@ def get_gen_criterion():
         print("mse: " + str(mse_loss.item()))
         print("kld: " + str(kld_loss.item()))
         print("wasser: " + str(wasser_loss.item()))
-        loss = 1 * mse_loss \
+        loss = 3 * mse_loss \
             + 0.003 * kld_loss \
             + wasser_loss
         return loss
@@ -87,18 +88,29 @@ def train_gan(e=None, b=None):
     vgg_bottom, unflatten = vgg_bottom.to(device), unflatten.to(device)
     # Yes it's strange that the bottom gets trained but the top doesn't
     vgg_top = partial_vgg.get_vgg_top().to(device)
-    discriminator = network.Discriminator().to(device)
+    #discriminator = network.Discriminator()
+    discriminator = vit.ViT(
+        image_size = 224,
+        patch_size = 8,
+        num_classes = 2,
+        dim = 16,
+        depth = 2,
+        heads = 2,
+        mlp_dim = 32,
+        dropout = 0.1,
+        emb_dropout = 0.1,
+        pool='mean').to(device)
     generator = network.Colorization_Model().to(device)
 
     if e is not None and b is not None:
         e = int(e)
         b = int(b)
         vgg_bottom.load_state_dict(torch.load(
-            "models/vgg_bottom_e"+str(e)+"_b"+str(b)+".pth"))
+            save_models_path+"vgg_bottom_e"+str(e)+"_b"+str(b)+".pth"))
         discriminator.load_state_dict(torch.load(
-            "models/discriminator_e"+str(e)+"_b"+str(b)+".pth"))
+            save_models_path+"discriminator_e"+str(e)+"_b"+str(b)+".pth"))
         generator.load_state_dict(torch.load(
-            "models/generator_e"+str(e)+"_b"+str(b)+".pth"))
+            save_models_path+"generator_e"+str(e)+"_b"+str(b)+".pth"))
     else:
         e = 0
         b = 0
@@ -161,16 +173,16 @@ def train_gan(e=None, b=None):
                 print("Discriminator loss: "+str(disc_loss.item()))
 
                 # Save a demo image after every 50 batches
-                if i % 50 == 0:
+                if i % 1 == 0:
                     # Reshape dimensions to be as expected
                     processed_ab = torch.squeeze(predicted_ab[0], dim=0)
                     processed_image = dataset.to_image(
                         data[1][0], processed_ab)
-                    plt.imsave("test_output/e" + str(epoch) + "b" +
+                    plt.imsave("/home/jlf60/mvp-colorizing/test_output/e" + str(epoch) + "b" +
                                str(i) + ".png", processed_image.numpy())
 
                 # Save the models every 200 batches
-                if i % 200 == 199:
+                if i % 500 == 199:
                     torch.save(vgg_bottom.state_dict(),
                                save_models_path + "/vgg_bottom_e" + str(epoch) + "_b" + str(i) + ".pth")
                     torch.save(generator.state_dict(),

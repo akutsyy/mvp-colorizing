@@ -71,11 +71,12 @@ def get_video(path):
     video_tensor = torch.ones(len(frames), 3, 224, 224)
 
     for i, img in enumerate(frames):
-        tensor = torch.permute(torch.Tensor(cv2.cvtColor(img.numpy(), cv2.COLOR_RGB2LAB)), (2, 0, 1)) / 255.0
+        tensor = torch.permute(torch.Tensor(cv2.cvtColor(img.numpy(), cv2.COLOR_RGB2LAB)), (2, 0, 1))/255
         # Random crop
         if i == 0:
             a, j, h, w = transforms.RandomCrop.get_params(tensor, output_size=(224, 224))
         image = transforms.functional.crop(tensor, a, j, h, w)
+
         video_tensor[i] = image
     return video_tensor, audio, metadata
 
@@ -120,6 +121,11 @@ class UCF101ImageDataset(Dataset):
         image = cv2.cvtColor(image, cv2.COLOR_BGR2LAB)
 
         image = self.other_transforms(self.to_tensor(image))
+
+        print(image.shape)
+        print(torch.max(image[0]))
+        print(torch.max(image[1]))
+        print(torch.max(image[2]))
 
         sample = (image[1:], image[0].unsqueeze(0))
 
@@ -172,6 +178,8 @@ def display_dataset_sample():
 
 
 def to_image(bw, color):
+    bw = torch.clip(bw, min=0, max=1)
+    color = torch.clip(color, min=0, max=1)
     full_image = torch.concat([bw.to('cpu') * 100, color.to('cpu') * 255 - 127], dim=0)
     full_color = torch.permute(
         transforms.ToTensor()(skcolor.lab2rgb(torch.permute(full_image, (1, 2, 0)).detach().numpy())),
@@ -180,6 +188,8 @@ def to_image(bw, color):
 
 
 def batch_to_image(bw, color):
+    bw = torch.clip(bw, min=0, max=1)
+    color = torch.clip(color, min=0, max=1)
     full_image = torch.concat([bw.to('cpu') * 100, color.to('cpu') * 255 - 127], dim=1)
     img_tensor = torch.ones((full_image.shape[0], 224, 224, 3))
     for i in range(full_image.shape[0]):

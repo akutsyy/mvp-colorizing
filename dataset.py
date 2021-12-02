@@ -140,24 +140,13 @@ def get_loaders():
                                               num_workers=config.num_workers)
     return train_loader, test_loader, len(train_set), len(test_set)
 
-<<<<<<< HEAD
-=======
-
 def get_datasets():
     train_set = UCF101ImageDataset("dataset/UCF101Images_train")
     test_set = UCF101ImageDataset("dataset/UCF101Images_eval")
     return train_set, test_set
->>>>>>> cfc371e48b4319f52e776cabc4acc574377ecf8f
-
 
 def display_dataset_sample():
-<<<<<<< HEAD
-
-
     training_data = UCF101ImageDataset("/home/jlf60/mvp-colorizing/dataset/UCF101Images_train")
-=======
-    training_data = UCF101ImageDataset("dataset/UCF101Images_train")
->>>>>>> cfc371e48b4319f52e776cabc4acc574377ecf8f
     rows = 6
     figure = plt.figure(figsize=(3, 6))
     figure.set_tight_layout(True)
@@ -179,17 +168,9 @@ def display_dataset_sample():
         plt.imshow(bw, cmap='gray')
     plt.show()
 
-<<<<<<< HEAD
-def to_image(bw,color,device='cpu'):
-    bw = bw.to(device)
-    color = color.to(device)
-    full_image = torch.concat([bw*100, color*255-127], dim=0)
-    full_image = full_image.to("cpu")
-=======
 
 def to_image(bw, color):
     full_image = torch.concat([bw.to('cpu') * 100, color.to('cpu') * 255 - 127], dim=0)
->>>>>>> cfc371e48b4319f52e776cabc4acc574377ecf8f
     full_color = torch.permute(
         transforms.ToTensor()(skcolor.lab2rgb(torch.permute(full_image, (1, 2, 0)).detach().numpy())),
         (1, 2, 0))

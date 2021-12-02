@@ -46,8 +46,10 @@ def demo_model_images(e, b, num=10,trainset=False):
         #plt.imsave("demo_output/image_" + str(i) + "_overlay.png", overlay.numpy())
 
 
-def re_color_video(video_tensor, vgg_bottom, unflatten, generator, device):
+def re_color_video(video_tensor, vgg_bottom, unflatten, generator, device,with_bw=False):
     video = torch.ones(video_tensor.shape)
+    if with_bw:
+        bw = torch.ones(video_tensor.shape)
     fcount = video.shape[0]
     for i in range(fcount // config.batch_size + (1 if fcount % config.batch_size > 0 else 0)):
         frames = video_tensor[i * config.batch_size:(i + 1) * config.batch_size]
@@ -61,6 +63,10 @@ def re_color_video(video_tensor, vgg_bottom, unflatten, generator, device):
         processed_image = torch.cat([grey, predicted_ab], dim=1)
 
         video[i * config.batch_size:(i + 1) * config.batch_size] = processed_image
+        if with_bw:
+            bw[i * config.batch_size:(i + 1) * config.batch_size] = torch.cat([grey,torch.ones(predicted_ab.shape)*0.5],dim=1)
+    if with_bw:
+        video = torch.cat([video,bw],dim=3)
     return video
 
 
@@ -72,7 +78,7 @@ def demo_model_videos(e, b, num=10, dir="dataset/UCF101Videos_eval", outdir='dem
         print(filenames[sample_idx])
         path = os.path.join(dir, filenames[sample_idx])
         video_tensor, audio, metadata = dataset.get_video(path)
-        recolored = re_color_video(video_tensor, vgg_bottom, unflatten, generator, device)
+        recolored = re_color_video(video_tensor, vgg_bottom, unflatten, generator, device,with_bw=True)
         recolored = dataset.lab_video_to_rgb(recolored)
         outpath = os.path.join(outdir, filenames[sample_idx])
         #if 'audio_fps' in metadata.keys() and audio is not None:
@@ -153,8 +159,8 @@ if __name__ == '__main__':
     if len(args) == 2:
         epoch = int(args[0])
         batch = int(args[1])
-        demo_model_images(e=epoch,b=batch,num=50,trainset=True)
-        #demo_model_videos(e=epoch, b=batch)
+        #demo_model_images(e=epoch,b=batch,num=50,trainset=True)
+        demo_model_videos(e=epoch, b=batch)
         # spacial, temporal = benchmark(e=epoch, b=batch,dir="dataset/UCF101Videos_eval_test")
         # print(spacial)
         # print(temporal)

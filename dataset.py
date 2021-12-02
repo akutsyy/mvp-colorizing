@@ -190,7 +190,7 @@ def lab_video_to_rgb(lab_tensor):
 
     full_image = torch.concat([bw.to('cpu') * 100, color.to('cpu')*255-127], dim=1)
 
-    img_tensor = torch.ones((full_image.shape[0], 224, 224, 3))
+    img_tensor = torch.ones((full_image.shape[0], full_image.shape[2], full_image.shape[3], 3))
     for i in range(full_image.shape[0]):
         img_tensor[i] = torch.permute(
             transforms.ToTensor()(skcolor.lab2rgb(torch.permute(full_image[i], (1, 2, 0)).detach().numpy())),

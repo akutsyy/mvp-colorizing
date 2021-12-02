@@ -57,14 +57,14 @@ def re_color_video(video_tensor, vgg_bottom, unflatten, generator, device,with_b
         grey_3 = grey.repeat(1, 3, 1, 1).to(device)
         vgg_bottom_out_flat = vgg_bottom(grey_3)
         # To undo the flatten operation in vgg_bottom
-        vgg_bottom_out = unflatten(vgg_bottom_out_flat)
-        predicted_ab, _ = generator(vgg_bottom_out)
+        vgg_bottom_out = unflatten(vgg_bottom_out_flat).detach()
+        predicted_ab, _ = generator(vgg_bottom_out).detach()
 
-        processed_image = torch.cat([grey, predicted_ab], dim=1)
+        processed_image = torch.cat([grey.detach(), predicted_ab], dim=1)
 
         video[i * config.batch_size:(i + 1) * config.batch_size] = processed_image
         if with_bw:
-            bw[i * config.batch_size:(i + 1) * config.batch_size] = torch.cat([grey,torch.ones(predicted_ab.shape)*0.5],dim=1)
+            bw[i * config.batch_size:(i + 1) * config.batch_size] = torch.cat([grey.detach(),torch.ones(predicted_ab.shape)*0.5],dim=1)
     if with_bw:
         video = torch.cat([video,bw],dim=3)
     return video
@@ -105,16 +105,16 @@ def benchmark(e, b, dir="dataset/UCF101Videos_eval"):
         path = os.path.join(dir, file)
         video_tensor, _, metadata = dataset.get_video(path)
 
-        recolored = re_color_video(video_tensor, vgg_bottom, unflatten, generator, device) / 255.
+        recolored = re_color_video(video_tensor, vgg_bottom, unflatten, generator, device)/ 255.
 
-        mse_k = torch.mean((recolored - video_tensor) ** 2, dim=(0, 2, 3)).detach().numpy()
+        mse_k = torch.mean((recolored - video_tensor) ** 2, dim=(0, 2, 3)).numpy()
         print(mse_k)
         max_per_channel = np.array([1., 1.])
         psnr_k = 10 * np.log(max_per_channel ** 2 / mse_k[1:]) / np.log(10)  # channel-wise peak signal to noise ratio
         APSNR = np.mean(psnr_k)
 
-        video_tensor = video_tensor.detach().numpy()
-        recolored = recolored.detach().numpy()
+        video_tensor = video_tensor.numpy()
+        recolored = recolored.numpy()
 
         mean_real = np.mean(video_tensor, axis=0)
         mean_pred = np.mean(recolored, axis=0)
@@ -165,9 +165,9 @@ if __name__ == '__main__':
         epoch = int(args[0])
         batch = int(args[1])
         #demo_model_images(e=epoch,b=batch,num=50,trainset=True)
-        demo_model_videos(e=epoch, b=batch)
-        # spacial, temporal = benchmark(e=epoch, b=batch,dir="dataset/UCF101Videos_eval_test")
-        # print(spacial)
-        # print(temporal)
+        #demo_model_videos(e=epoch, b=batch)
+        spacial, temporal = benchmark(e=epoch, b=batch)
+        print(spacial)
+        print(temporal)
     else:
         print("Requires arguments: <epoch> <batch>")

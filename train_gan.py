@@ -35,7 +35,7 @@ def get_gen_criterion():
         print("mse: " + str(mse_loss.item()))
         print("kld: " + str(kld_loss.item()))
         print("wasser: " + str(wasser_loss.item()))
-        loss = 1 * mse_loss \
+        loss = 3 * mse_loss \
             + 0.003 * kld_loss \
             + wasser_loss
         return loss
@@ -93,25 +93,24 @@ def train_gan(e=None, b=None):
         image_size = 224,
         patch_size = 8,
         num_classes = 2,
-        dim = 4,
-        depth = 1,
-        heads = 4,
-        mlp_dim = 8,
+        dim = 16,
+        depth = 2,
+        heads = 2,
+        mlp_dim = 32,
         dropout = 0.1,
         emb_dropout = 0.1,
-        pool='mean',
-        device=device).to(device)
+        pool='mean').to(device)
     generator = network.Colorization_Model().to(device)
 
     if e is not None and b is not None:
         e = int(e)
         b = int(b)
         vgg_bottom.load_state_dict(torch.load(
-            save_models_path+"models/vgg_bottom_e"+str(e)+"_b"+str(b)+".pth"))
+            save_models_path+"vgg_bottom_e"+str(e)+"_b"+str(b)+".pth"))
         discriminator.load_state_dict(torch.load(
-            save_models_path+"models/discriminator_e"+str(e)+"_b"+str(b)+".pth"))
+            save_models_path+"discriminator_e"+str(e)+"_b"+str(b)+".pth"))
         generator.load_state_dict(torch.load(
-            save_models_path+"models/generator_e"+str(e)+"_b"+str(b)+".pth"))
+            save_models_path+"generator_e"+str(e)+"_b"+str(b)+".pth"))
     else:
         e = 0
         b = 0

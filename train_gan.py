@@ -12,7 +12,7 @@ import dataset
 import network
 import nn_utils
 import partial_vgg
-import vit
+#import vit
 
 
 def get_gen_optimizer(vgg_bottom, gen):

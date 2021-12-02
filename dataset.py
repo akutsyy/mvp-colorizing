@@ -129,7 +129,7 @@ class UCF101ImageDataset(Dataset):
 
 def get_loaders(dataset_root="dataset"):
     train_set = UCF101ImageDataset(dataset_root+"/UCF101Images_train")
-    test_set = UCF101ImageDataset(dataset_root+"dataset/UCF101Images_train")
+    test_set = UCF101ImageDataset(dataset_root+"/UCF101Images_train")
     train_loader = torch.utils.data.DataLoader(train_set,
                                                batch_size=config.batch_size,
                                                shuffle=True,
@@ -169,6 +169,18 @@ def display_dataset_sample(dataset_root="dataset"):
         plt.imshow(bw, cmap='gray')
     plt.show()
 
+def save_radom_samples(num=10,dataset_root="dataset"):
+    training_data = UCF101ImageDataset(dataset_root+"/UCF101Images_train")
+    for i in range(num):
+        sample_idx = torch.randint(len(training_data), size=(1,)).item()
+        color, bw = training_data[sample_idx]
+        full_image = torch.concat([bw * 100, color * 255 - 127], dim=0)
+        full_color = torch.permute(
+            transforms.ToTensor()(skcolor.lab2rgb(torch.permute(full_image, (1, 2, 0)).numpy())),
+            (1, 2, 0))
+
+        plt.imsave("pre_processing/img_"+str(i)+".png",full_color.numpy())
+
 
 def to_image(bw, color):
     bw = torch.clip(bw, min=0, max=1)
@@ -197,6 +209,7 @@ def lab_video_to_rgb(lab_tensor):
 
 
 if __name__ == '__main__':
+    save_radom_samples(num=100)
     display_dataset_sample()
     print("Loading")
     train_loader, test_loader, train_len, test_len = get_loaders()

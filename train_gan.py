@@ -21,7 +21,7 @@ def get_gen_optimizer(vgg_bottom, gen):
 
 
 def get_disc_optimizer(discriminator):
-    return torch.optim.Adam(discriminator.parameters(), lr=0.00002, betas=(0.9, 0.999))
+    return torch.optim.Adam(discriminator.parameters(), lr=0.00002, betas=(0.5, 0.999))
 
 
 def get_gen_criterion():
@@ -130,8 +130,8 @@ def train_gan(e=None, b=None):
             running_gen_loss = 0.0
             running_disc_loss = 0.0
             for i, data in enumerate(train_loader, 0):
-                if i<b:
-                    continue
+                if i>train_len-b:
+                    break
                 # Print progress
                 log.flush()
                 print("Epoch "+str(epoch)+" Batch " + str(i))

@@ -73,7 +73,7 @@ def demo_model_videos(e,b,num=10,dir = "dataset/UCF101Videos_eval",outdir='demo_
         else:
             torchvision.io.write_video(filename=outpath, video_array=recolored,
                                        fps=metadata['video_fps'], video_codec='h264',
-                                       audio_array=audio,audio_fps=metadata['audio_fps'])
+                                       audio_array=audio,audio_fps=metadata['audio_fps'], audio_codec="mp3")
 
 
 def benchmark(e,b,dir = "dataset/UCF101Videos_eval"):
@@ -119,8 +119,12 @@ def benchmark(e,b,dir = "dataset/UCF101Videos_eval"):
 
         PCPV = (corr_a[0][1]+corr_b[0][1])/2
 
-        avg_snr = APSNR/len(files)
-        avg_pcpv = PCPV/len(files)
+        avg_snr += APSNR
+        avg_pcpv += PCPV
+        print(avg_snr/(i+1))
+        print(avg_pcpv/(i+1))
+    avg_snr = avg_snr/len(files)
+    avg_pcpv = avg_pcpv/len(files)
     return avg_snr, avg_pcpv
 
 
@@ -129,6 +133,7 @@ def benchmark(e,b,dir = "dataset/UCF101Videos_eval"):
 def get_models(e, b):
     # Get cpu or gpu device for training.
     device = "cuda" if config.use_gpu and torch.cuda.is_available() else "cpu"
+    #device = "cpu"
     print(device)
 
     # Load models
@@ -137,20 +142,31 @@ def get_models(e, b):
     generator = network.Colorization_Model().to(device)
 
     vgg_bottom.load_state_dict(torch.load(
-        "models/vgg_bottom_e"+str(e)+"_b"+str(b)+".pth",map_location=device))
+        "/home/jlf60/mvp-colorizing/models/vgg_bottom_e"+str(e)+"_b"+str(b)+".pth",map_location=device))
     generator.load_state_dict(torch.load(
-        "models/generator_e"+str(e)+"_b"+str(b)+".pth",map_location=device))
+        "/home/jlf60/mvp-colorizing/models/generator_e"+str(e)+"_b"+str(b)+".pth",map_location=device))
 
     return vgg_bottom,unflatten,generator,device
 
 
 if __name__ == '__main__':
-    args = sys.argv[1:]
-    if len(args) == 2:
-        epoch = int(args[0])
-        batch = int(args[1])
-        spacial, temporal = benchmark(e=epoch, b=batch,dir="dataset/UCF101Videos_eval_test")
-        print(spacial)
-        print(temporal)
-    else:
-        print("Requires arguments: <epoch> <batch>")
+    epoch = 1
+    batch = 4199
+    print(epoch)
+    print(batch)
+    #spacial, temporal = benchmark(e=epoch, b=batch,dir="/home/jlf60/mvp-colorizing/dataset/UCF101Videos_eval")
+    demo_model_videos(epoch,batch, num=648,dir = "/home/jlf60/mvp-colorizing/dataset/UCF101Videos_eval",outdir='/home/jlf60/mvp-colorizing/demo_output')
+    #args = sys.argv[1:]
+    #if len(args) == 2:
+        #epoch = int(args[0])
+        #batch = int(args[1])
+        #print(epoch)
+        #print(batch)
+        #spacial, temporal = benchmark(e=epoch, b=batch,dir="/home/jlf60/mvp-colorizing/dataset/UCF101Videos_eval")
+        ##spacial, temporal = benchmark(e=epoch, b=batch,dir="dataset/UCF101Videos_eval")
+        #print(spacial)
+        #print(temporal)
+        ##demo_model_videos(epoch,batch,num=10,dir = "dataset/UCF101Videos_eval",outdir='demo_output')
+        
+    #else:
+        #print("Requires arguments: <epoch> <batch>")

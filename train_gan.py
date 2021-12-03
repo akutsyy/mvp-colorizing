@@ -21,7 +21,7 @@ def get_gen_optimizer(vgg_bottom, gen):
 
 
 def get_disc_optimizer(discriminator):
-    return torch.optim.Adam(discriminator.parameters(), lr=0.00002, betas=(0.5, 0.999))
+    return torch.optim.Adam(discriminator.parameters(), lr=0.00000002, betas=(0.5, 0.999))
 
 
 def get_gen_criterion():
@@ -35,7 +35,7 @@ def get_gen_criterion():
         print("mse: " + str(mse_loss.item()))
         print("kld: " + str(kld_loss.item()))
         print("wasser: " + str(wasser_loss.item()))
-        loss = 3 * mse_loss \
+        loss = 10 * mse_loss \
             + 0.003 * kld_loss \
             + wasser_loss
         return loss
@@ -57,7 +57,7 @@ def get_disc_criterion(device='cpu'):
         print("grad: " + str(gp_loss.item()))
         return -1 * real_loss + \
             1 * pred_loss + \
-            1 * gp_loss
+            10 * gp_loss
 
     return loss_function
 
@@ -93,13 +93,13 @@ def train_gan(e=None, b=None):
         image_size = 224,
         patch_size = 8,
         num_classes = 2,
-        dim = 16,
+        dim = 128,
         depth = 2,
-        heads = 2,
-        mlp_dim = 32,
+        heads = 4,
+        mlp_dim = 256,
         dropout = 0.1,
         emb_dropout = 0.1,
-        pool='mean').to(device)
+        pool = 'mean').to(device)
     generator = network.Colorization_Model().to(device)
 
     if e is not None and b is not None:

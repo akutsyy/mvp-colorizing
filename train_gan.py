@@ -82,7 +82,9 @@ def train_gan(e=None, b=None):
     save_models_path = os.path.join(config.model_dir)
     if not os.path.exists(save_models_path):
         os.makedirs(save_models_path)
-
+    save_image_path = os.path.join(config.image_dir)
+    if not os.path.exists(save_image_path):
+        os.makedirs(save_image_path)
     # Load models
     vgg_bottom, unflatten = partial_vgg.get_partial_vgg()
     vgg_bottom, unflatten = vgg_bottom.to(device), unflatten.to(device)
@@ -178,7 +180,7 @@ def train_gan(e=None, b=None):
                     processed_ab = torch.squeeze(predicted_ab[0], dim=0)
                     processed_image = dataset.to_image(
                         data[1][0], processed_ab)
-                    plt.imsave("/home/jlf60/mvp-colorizing/test_output/e" + str(epoch) + "b" +
+                    plt.imsave(save_image_path+"/e" + str(epoch) + "b" +
                                str(i) + ".png", processed_image.numpy())
 
                 # Save the models every 500 batches

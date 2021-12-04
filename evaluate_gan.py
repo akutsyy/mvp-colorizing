@@ -38,12 +38,12 @@ def demo_model_images(e, b, num=10,trainset=False):
 
         processed_ab = torch.squeeze(predicted_ab[0].detach(), dim=0)
         processed_image = dataset.to_image(
-            data[1], processed_ab)
+            data[1], real_ab)
         plt.imsave("demo_output/image_" + str(i) + ".png", processed_image.numpy())
 
-        overlay = dataset.to_image(
-            torch.ones((1, 224, 224)) * 0.75, processed_ab)
-        #plt.imsave("demo_output/image_" + str(i) + "_overlay.png", overlay.numpy())
+        bw_im = dataset.to_image(
+            grey.squeeze(0).cpu(), torch.ones(real_ab.squeeze(0).shape)*0.5)
+        plt.imsave("demo_output/image_" + str(i) + "_overlay.png", bw_im.numpy())
 
 
 def re_color_video(video_tensor, vgg_bottom, unflatten, generator, device,with_bw=False):
@@ -136,8 +136,8 @@ def benchmark(e, b, dir="dataset/UCF101Videos_eval"):
 
         PCPV = (corr_a[0][1] + corr_b[0][1]) / 2
 
-        avg_snr = APSNR / len(files)
-        avg_pcpv = PCPV / len(files)
+        avg_snr += APSNR / len(files)
+        avg_pcpv += PCPV / len(files)
     return avg_snr, avg_pcpv
 
 
@@ -164,10 +164,10 @@ if __name__ == '__main__':
     if len(args) == 2:
         epoch = int(args[0])
         batch = int(args[1])
-        #demo_model_images(e=epoch,b=batch,num=50,trainset=True)
+        demo_model_images(e=epoch,b=batch,num=50,trainset=True)
         #demo_model_videos(e=epoch, b=batch)
-        spacial, temporal = benchmark(e=epoch, b=batch)
-        print(spacial)
-        print(temporal)
+        #spacial, temporal = benchmark(e=epoch, b=batch)
+        #print(spacial)
+        #print(temporal)
     else:
         print("Requires arguments: <epoch> <batch>")
